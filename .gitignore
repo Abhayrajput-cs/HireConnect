@@ -1,0 +1,3 @@
+.project
+*.log
+auth-service/.secrets/
