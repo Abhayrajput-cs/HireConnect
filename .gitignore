@@ -1,3 +1,6 @@
 .project
+.idea/
+.vscode/
 *.log
+**/target/
 auth-service/.secrets/
