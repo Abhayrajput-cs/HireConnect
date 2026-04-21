@@ -29,7 +29,8 @@ class ApiGatewayServiceApplicationTests {
         assertThat(routeIds).contains(
             "auth-service",
             "profile-service",
-            "job-service",
+            "job-service-v1",
+            "job-service-legacy",
             "application-service",
             "interview-service",
             "notification-service",

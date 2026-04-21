@@ -1,0 +1,88 @@
+package com.hireconnect.profile.controller;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.hireconnect.profile.dto.CandidateProfileRequest;
+import com.hireconnect.profile.dto.ProfileResponse;
+import com.hireconnect.profile.dto.RecruiterProfileRequest;
+import com.hireconnect.profile.service.ProfileService;
+
+import jakarta.validation.Valid;
+
+@Validated
+@RestController
+@RequestMapping("/api/v1/profiles")
+public class ProfileResource {
+
+    private final ProfileService profileService;
+
+    public ProfileResource(ProfileService profileService) {
+        this.profileService = profileService;
+    }
+
+    @PostMapping("/candidates")
+    public ResponseEntity<ProfileResponse> addCandidate(@Valid @RequestBody CandidateProfileRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(profileService.addCandidateProfile(request));
+    }
+
+    @PostMapping("/recruiters")
+    public ResponseEntity<ProfileResponse> addRecruiter(@Valid @RequestBody RecruiterProfileRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(profileService.addRecruiterProfile(request));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ProfileResponse>> getAll(@RequestParam(required = false) String role) {
+        if (role == null || role.isBlank()) {
+            return ResponseEntity.ok(profileService.getAllProfiles());
+        }
+        return ResponseEntity.ok(profileService.getAllProfilesByRole(role));
+    }
+
+    @GetMapping("/{profileId}")
+    public ResponseEntity<ProfileResponse> getById(@PathVariable Integer profileId) {
+        return ResponseEntity.ok(profileService.getProfileById(profileId));
+    }
+
+    @GetMapping("/email/{email:.+}")
+    public ResponseEntity<ProfileResponse> getByEmail(@PathVariable String email) {
+        return ResponseEntity.ok(profileService.getByEmail(email));
+    }
+
+    @GetMapping("/mobile/{mobile}")
+    public ResponseEntity<ProfileResponse> getByMobile(@PathVariable Long mobile) {
+        return ResponseEntity.ok(profileService.getByMobile(mobile));
+    }
+
+    @GetMapping("/role/{role}")
+    public ResponseEntity<List<ProfileResponse>> getByRole(@PathVariable String role) {
+        return ResponseEntity.ok(profileService.getAllProfilesByRole(role));
+    }
+
+    @PutMapping("/{profileId}")
+    public ResponseEntity<ProfileResponse> updateProfile(
+        @PathVariable Integer profileId,
+        @RequestBody Map<String, Object> updates
+    ) {
+        return ResponseEntity.ok(profileService.updateProfile(profileId, updates));
+    }
+
+    @DeleteMapping("/{profileId}")
+    public ResponseEntity<Void> deleteProfile(@PathVariable Integer profileId) {
+        profileService.deleteProfile(profileId);
+        return ResponseEntity.noContent().build();
+    }
+}
