@@ -23,16 +23,8 @@ public class GatewayRoutesConfig {
             .route("job-service-v1", predicate -> predicate
                 .path("/api/v1/jobs", "/api/v1/jobs/**")
                 .uri("lb://job-service"))
-            .route("job-service", serviceRoute("/api/jobs/**", "/api/jobs/(?<segment>.*)", "/api/v1/jobs/${segment}", "lb://job-service"))
-            .route("application-service-v1", predicate -> predicate
-                .path("/api/v1/applications", "/api/v1/applications/**")
-                .uri("lb://application-service"))
-            .route("application-service", serviceRoute(
-                "/api/applications/**",
-                "/api/applications/(?<segment>.*)",
-                "/api/v1/applications/${segment}",
-                "lb://application-service"
-            ))
+            .route("job-service-legacy", serviceRoute("/api/jobs/**", "/api/jobs/(?<segment>.*)", "/api/v1/jobs/${segment}", "lb://job-service"))
+            .route("application-service", serviceRoute("/api/applications/**", "/api/applications/(?<segment>.*)", "/applications/${segment}", "lb://application-service"))
             .route("interview-service", serviceRoute("/api/interviews/**", "/api/interviews/(?<segment>.*)", "/interviews/${segment}", "lb://interview-service"))
             .route("notification-service", serviceRoute("/api/notifications/**", "/api/notifications/(?<segment>.*)", "/notifications/${segment}", "lb://notification-service"))
             .route("subscription-service", serviceRoute("/api/subscriptions/**", "/api/subscriptions/(?<segment>.*)", "/subscriptions/${segment}", "lb://subscription-service"))

@@ -8,5 +8,4 @@ Infrastructure services currently available:
 - `api-gateway-service`: central entry point for client requests
 - `auth-service`: authentication, JWT, and GitHub OAuth
 - `profile-service`: candidate and recruiter profile management
-- `job-service`: job posting and search lifecycle
-- `application-service`: job application submission and pipeline tracking
+- `job-service`: job posting, search, filtering, and recruiter-linked ownership
