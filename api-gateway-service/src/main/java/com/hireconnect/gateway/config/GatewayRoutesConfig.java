@@ -17,7 +17,9 @@ public class GatewayRoutesConfig {
     RouteLocator gatewayRoutes(RouteLocatorBuilder builder) {
         return builder.routes()
             .route("auth-service", serviceRoute("/api/auth/**", "/api/auth/(?<segment>.*)", "/auth/${segment}", "lb://auth-service"))
-            .route("profile-service", serviceRoute("/api/profiles/**", "/api/profiles/(?<segment>.*)", "/profiles/${segment}", "lb://profile-service"))
+            .route("profile-service", predicate -> predicate
+                .path("/api/v1/profiles", "/api/v1/profiles/**")
+                .uri("lb://profile-service"))
             .route("job-service", serviceRoute("/api/jobs/**", "/api/jobs/(?<segment>.*)", "/jobs/${segment}", "lb://job-service"))
             .route("application-service", serviceRoute("/api/applications/**", "/api/applications/(?<segment>.*)", "/applications/${segment}", "lb://application-service"))
             .route("interview-service", serviceRoute("/api/interviews/**", "/api/interviews/(?<segment>.*)", "/interviews/${segment}", "lb://interview-service"))

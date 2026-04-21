@@ -22,7 +22,7 @@ Central entry point for client requests in the HireConnect microservices platfor
 The gateway currently defines friendly entry routes for the planned microservices:
 
 - `/api/auth/**` -> `auth-service`
-- `/api/profiles/**` -> `profile-service`
+- `/api/v1/profiles/**` -> `profile-service`
 - `/api/jobs/**` -> `job-service`
 - `/api/applications/**` -> `application-service`
 - `/api/interviews/**` -> `interview-service`
