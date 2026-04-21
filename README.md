@@ -7,3 +7,4 @@ Infrastructure services currently available:
 - `eureka-service`: service discovery server
 - `api-gateway-service`: central entry point for client requests
 - `profile-service`: candidate and recruiter profile management
+- `job-service`: job posting, search, filtering, and recruiter-linked ownership

@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.hireconnect</groupId>
-    <artifactId>profile-service</artifactId>
+    <artifactId>job-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>profile-service</name>
-    <description>HireConnect profile management microservice</description>
+    <name>job-service</name>
+    <description>HireConnect job management microservice</description>
 
     <properties>
         <java.version>21</java.version>
