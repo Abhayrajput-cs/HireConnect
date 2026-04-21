@@ -23,7 +23,9 @@ The gateway currently defines friendly entry routes for the planned microservice
 
 - `/api/auth/**` -> `auth-service`
 - `/api/v1/profiles/**` -> `profile-service`
+- `/api/v1/jobs/**` -> `job-service`
 - `/api/jobs/**` -> `job-service`
+- `/api/v1/applications/**` -> `application-service`
 - `/api/applications/**` -> `application-service`
 - `/api/interviews/**` -> `interview-service`
 - `/api/notifications/**` -> `notification-service`
