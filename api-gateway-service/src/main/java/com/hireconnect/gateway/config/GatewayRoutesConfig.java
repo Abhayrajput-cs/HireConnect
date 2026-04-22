@@ -24,8 +24,24 @@ public class GatewayRoutesConfig {
                 .path("/api/v1/jobs", "/api/v1/jobs/**")
                 .uri("lb://job-service"))
             .route("job-service-legacy", serviceRoute("/api/jobs/**", "/api/jobs/(?<segment>.*)", "/api/v1/jobs/${segment}", "lb://job-service"))
-            .route("application-service", serviceRoute("/api/applications/**", "/api/applications/(?<segment>.*)", "/applications/${segment}", "lb://application-service"))
-            .route("interview-service", serviceRoute("/api/interviews/**", "/api/interviews/(?<segment>.*)", "/interviews/${segment}", "lb://interview-service"))
+            .route("application-service-v1", predicate -> predicate
+                .path("/api/v1/applications", "/api/v1/applications/**")
+                .uri("lb://application-service"))
+            .route("application-service-legacy", serviceRoute(
+                "/api/applications/**",
+                "/api/applications/(?<segment>.*)",
+                "/api/v1/applications/${segment}",
+                "lb://application-service"
+            ))
+            .route("interview-service-v1", predicate -> predicate
+                .path("/api/v1/interviews", "/api/v1/interviews/**")
+                .uri("lb://interview-service"))
+            .route("interview-service-legacy", serviceRoute(
+                "/api/interviews/**",
+                "/api/interviews/(?<segment>.*)",
+                "/api/v1/interviews/${segment}",
+                "lb://interview-service"
+            ))
             .route("notification-service", serviceRoute("/api/notifications/**", "/api/notifications/(?<segment>.*)", "/notifications/${segment}", "lb://notification-service"))
             .route("subscription-service", serviceRoute("/api/subscriptions/**", "/api/subscriptions/(?<segment>.*)", "/subscriptions/${segment}", "lb://subscription-service"))
             .route("analytics-service", serviceRoute("/api/analytics/**", "/api/analytics/(?<segment>.*)", "/analytics/${segment}", "lb://analytics-service"))
