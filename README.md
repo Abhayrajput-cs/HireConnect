@@ -11,3 +11,4 @@ Infrastructure services currently available:
 - `job-service`: job posting and search lifecycle
 - `application-service`: job application submission and pipeline tracking
 - `interview-service`: interview scheduling and lifecycle management
+- `notification-service`: merged notification dispatch and analytics reporting with RabbitMQ event consumption

@@ -22,6 +22,8 @@ import com.hireconnect.application.domain.Application;
 import com.hireconnect.application.dto.ApplicationRequest;
 import com.hireconnect.application.dto.ApplicationResponse;
 import com.hireconnect.application.exception.ApiException;
+import com.hireconnect.application.messaging.NotificationEvent;
+import com.hireconnect.application.messaging.NotificationEventPublisher;
 import com.hireconnect.application.repository.ApplicationRepository;
 
 @Service
@@ -52,15 +54,18 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final CandidateDirectoryClient candidateDirectoryClient;
     private final JobCatalogClient jobCatalogClient;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     public ApplicationServiceImpl(
         ApplicationRepository applicationRepository,
         CandidateDirectoryClient candidateDirectoryClient,
-        JobCatalogClient jobCatalogClient
+        JobCatalogClient jobCatalogClient,
+        NotificationEventPublisher notificationEventPublisher
     ) {
         this.applicationRepository = applicationRepository;
         this.candidateDirectoryClient = candidateDirectoryClient;
         this.jobCatalogClient = jobCatalogClient;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     @Override
@@ -84,7 +89,19 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(APPLIED);
         application.setCoverLetter(request.coverLetter());
         application.setResumeUrl(resolveResumeUrl(request.resumeUrl(), candidateProfile.resumeUrl()));
-        return toResponse(applicationRepository.save(application));
+        Application savedApplication = applicationRepository.save(application);
+        publishApplicationEvent(
+            "APPLICATION_STATUS_CHANGED",
+            List.of(savedApplication.getCandidateId(), job.postedBy()),
+            List.of(candidateProfile.email()),
+            "Application submitted for " + job.title(),
+            "Application submitted",
+            "Application " + savedApplication.getApplicationId() + " was submitted for " + job.title(),
+            savedApplication,
+            job,
+            APPLIED
+        );
+        return toResponse(savedApplication);
     }
 
     @Override
@@ -150,7 +167,21 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         application.setStatus(nextStatus.name());
-        return toResponse(applicationRepository.save(application));
+        Application savedApplication = applicationRepository.save(application);
+        JobSnapshot job = jobCatalogClient.getJob(savedApplication.getJobId());
+        CandidateProfileSnapshot candidateProfile = candidateDirectoryClient.getCandidateProfile(savedApplication.getCandidateId());
+        publishApplicationEvent(
+            "APPLICATION_STATUS_CHANGED",
+            List.of(savedApplication.getCandidateId()),
+            List.of(candidateProfile.email()),
+            "Your application for " + job.title() + " is now " + nextStatus.name(),
+            "Application status updated",
+            "Application " + savedApplication.getApplicationId() + " for " + job.title() + " moved to " + nextStatus.name(),
+            savedApplication,
+            job,
+            nextStatus.name()
+        );
+        return toResponse(savedApplication);
     }
 
     @Override
@@ -169,7 +200,20 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         application.setStatus(WITHDRAWN);
-        return toResponse(applicationRepository.save(application));
+        Application savedApplication = applicationRepository.save(application);
+        JobSnapshot job = jobCatalogClient.getJob(savedApplication.getJobId());
+        publishApplicationEvent(
+            "APPLICATION_STATUS_CHANGED",
+            List.of(job.postedBy()),
+            List.of(candidateProfile.email()),
+            "Candidate withdrew application for " + job.title(),
+            "Application withdrawn",
+            "Application " + savedApplication.getApplicationId() + " for " + job.title() + " was withdrawn by the candidate",
+            savedApplication,
+            job,
+            WITHDRAWN
+        );
+        return toResponse(savedApplication);
     }
 
     @Override
@@ -289,6 +333,36 @@ public class ApplicationServiceImpl implements ApplicationService {
             application.getCoverLetter(),
             application.getResumeUrl()
         );
+    }
+
+    private void publishApplicationEvent(
+        String eventType,
+        List<Integer> recipients,
+        List<String> recipientEmails,
+        String message,
+        String emailSubject,
+        String emailBody,
+        Application application,
+        JobSnapshot job,
+        String status
+    ) {
+        notificationEventPublisher.publish(new NotificationEvent(
+            eventType,
+            "APPLICATION",
+            message,
+            recipients,
+            recipientEmails,
+            null,
+            emailSubject,
+            emailBody,
+            application.getApplicationId(),
+            application.getJobId(),
+            job.postedBy(),
+            application.getCandidateId(),
+            status,
+            application.getAppliedAt(),
+            java.time.LocalDateTime.now()
+        ));
     }
 
     private static Map<ApplicationStatus, Set<ApplicationStatus>> buildTransitions() {

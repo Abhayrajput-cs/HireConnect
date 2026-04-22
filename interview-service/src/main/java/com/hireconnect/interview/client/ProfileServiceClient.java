@@ -43,6 +43,26 @@ public class ProfileServiceClient implements ProfileDirectoryClient {
         }
     }
 
+    @Override
+    public ProfileSnapshot getProfileById(Integer profileId) {
+        try {
+            RestClient.RequestHeadersSpec<?> request = restClient.get().uri("/api/v1/profiles/{profileId}", profileId);
+            String authorizationHeader = currentAuthorizationHeader();
+            if (StringUtils.hasText(authorizationHeader)) {
+                request = request.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
+            }
+            return request.retrieve().body(ProfileSnapshot.class);
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Profile not found with id: " + profileId);
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication is required to validate the profile");
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Profile service is unavailable");
+        } catch (RestClientResponseException ex) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Profile service returned an unexpected response");
+        }
+    }
+
     private String currentAuthorizationHeader() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {

@@ -18,6 +18,8 @@ import com.hireconnect.job.domain.Job;
 import com.hireconnect.job.dto.JobRequest;
 import com.hireconnect.job.dto.JobResponse;
 import com.hireconnect.job.exception.ApiException;
+import com.hireconnect.job.messaging.NotificationEvent;
+import com.hireconnect.job.messaging.NotificationEventPublisher;
 import com.hireconnect.job.repository.JobRepository;
 import com.hireconnect.job.repository.JobSpecifications;
 
@@ -31,15 +33,18 @@ public class JobServiceImpl implements JobService {
     private final JobRepository jobRepository;
     private final RecruiterDirectoryClient recruiterDirectoryClient;
     private final ObjectMapper objectMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     public JobServiceImpl(
         JobRepository jobRepository,
         RecruiterDirectoryClient recruiterDirectoryClient,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        NotificationEventPublisher notificationEventPublisher
     ) {
         this.jobRepository = jobRepository;
         this.recruiterDirectoryClient = recruiterDirectoryClient;
         this.objectMapper = objectMapper;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     @Override
@@ -61,7 +66,26 @@ public class JobServiceImpl implements JobService {
         job.setStatus(normalizeStatus(request.status()));
         job.setPostedAt(request.postedAt() == null ? LocalDate.now() : request.postedAt());
 
-        return toResponse(jobRepository.save(job));
+        Job savedJob = jobRepository.save(job);
+        List<RecruiterProfileSnapshot> candidates = recruiterDirectoryClient.getProfilesByRole("CANDIDATE");
+        notificationEventPublisher.publish(new NotificationEvent(
+            "JOB_CREATED",
+            "JOB_ALERT",
+            "New job alert: " + savedJob.getTitle() + " in " + savedJob.getLocation(),
+            candidates.stream().map(RecruiterProfileSnapshot::profileId).toList(),
+            candidates.stream().map(RecruiterProfileSnapshot::email).filter(email -> email != null && !email.isBlank()).toList(),
+            null,
+            "New HireConnect job alert",
+            "A new job has been posted: " + savedJob.getTitle() + " in " + savedJob.getLocation(),
+            null,
+            savedJob.getJobId(),
+            savedJob.getPostedBy(),
+            null,
+            savedJob.getStatus(),
+            savedJob.getPostedAt(),
+            java.time.LocalDateTime.now()
+        ));
+        return toResponse(savedJob);
     }
 
     @Override

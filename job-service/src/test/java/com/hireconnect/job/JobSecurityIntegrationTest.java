@@ -136,11 +136,19 @@ class JobSecurityIntegrationTest {
         @Bean
         @Primary
         RecruiterDirectoryClient recruiterDirectoryClient() {
-            return profileId -> {
-                if (profileId == 101) {
-                    return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+            return new RecruiterDirectoryClient() {
+                @Override
+                public RecruiterProfileSnapshot getRecruiterProfile(Integer profileId) {
+                    if (profileId == 101) {
+                        return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+                    }
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
                 }
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
+
+                @Override
+                public java.util.List<RecruiterProfileSnapshot> getProfilesByRole(String role) {
+                    return java.util.List.of();
+                }
             };
         }
     }

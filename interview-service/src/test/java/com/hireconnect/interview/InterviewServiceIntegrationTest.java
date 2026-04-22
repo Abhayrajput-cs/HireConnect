@@ -272,17 +272,34 @@ class InterviewServiceIntegrationTest {
         @Bean
         @Primary
         ProfileDirectoryClient profileDirectoryClient() {
-            return email -> {
-                if ("recruiter@example.com".equalsIgnoreCase(email)) {
-                    return new ProfileSnapshot(401, "RECRUITER", email);
+            return new ProfileDirectoryClient() {
+                @Override
+                public ProfileSnapshot getProfileByEmail(String email) {
+                    if ("recruiter@example.com".equalsIgnoreCase(email)) {
+                        return new ProfileSnapshot(401, "RECRUITER", email);
+                    }
+                    if ("candidate@example.com".equalsIgnoreCase(email)) {
+                        return new ProfileSnapshot(101, "CANDIDATE", email);
+                    }
+                    if ("othercandidate@example.com".equalsIgnoreCase(email)) {
+                        return new ProfileSnapshot(111, "CANDIDATE", email);
+                    }
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Profile not found for authenticated user");
                 }
-                if ("candidate@example.com".equalsIgnoreCase(email)) {
-                    return new ProfileSnapshot(101, "CANDIDATE", email);
+
+                @Override
+                public ProfileSnapshot getProfileById(Integer profileId) {
+                    if (profileId == 401) {
+                        return new ProfileSnapshot(401, "RECRUITER", "recruiter@example.com");
+                    }
+                    if (profileId == 101) {
+                        return new ProfileSnapshot(101, "CANDIDATE", "candidate@example.com");
+                    }
+                    if (profileId == 111) {
+                        return new ProfileSnapshot(111, "CANDIDATE", "othercandidate@example.com");
+                    }
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Profile not found with id: " + profileId);
                 }
-                if ("othercandidate@example.com".equalsIgnoreCase(email)) {
-                    return new ProfileSnapshot(111, "CANDIDATE", email);
-                }
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Profile not found for authenticated user");
             };
         }
     }

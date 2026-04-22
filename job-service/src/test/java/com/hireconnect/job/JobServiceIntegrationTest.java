@@ -187,17 +187,31 @@ class JobServiceIntegrationTest {
         @Bean
         @Primary
         RecruiterDirectoryClient recruiterDirectoryClient() {
-            return profileId -> {
-                if (profileId == 101) {
-                    return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+            return new RecruiterDirectoryClient() {
+                @Override
+                public RecruiterProfileSnapshot getRecruiterProfile(Integer profileId) {
+                    if (profileId == 101) {
+                        return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+                    }
+                    if (profileId == 303) {
+                        return new RecruiterProfileSnapshot(303, "RECRUITER", "Karan Shah", "karan@startup.com");
+                    }
+                    if (profileId == 202) {
+                        return new RecruiterProfileSnapshot(202, "CANDIDATE", "Aman Sharma", "aman@example.com");
+                    }
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
                 }
-                if (profileId == 303) {
-                    return new RecruiterProfileSnapshot(303, "RECRUITER", "Karan Shah", "karan@startup.com");
+
+                @Override
+                public java.util.List<RecruiterProfileSnapshot> getProfilesByRole(String role) {
+                    if ("CANDIDATE".equalsIgnoreCase(role)) {
+                        return java.util.List.of(new RecruiterProfileSnapshot(202, "CANDIDATE", "Aman Sharma", "aman@example.com"));
+                    }
+                    return java.util.List.of(
+                        new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com"),
+                        new RecruiterProfileSnapshot(303, "RECRUITER", "Karan Shah", "karan@startup.com")
+                    );
                 }
-                if (profileId == 202) {
-                    return new RecruiterProfileSnapshot(202, "CANDIDATE", "Aman Sharma", "aman@example.com");
-                }
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
             };
         }
     }

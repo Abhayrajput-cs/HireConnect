@@ -42,9 +42,25 @@ public class GatewayRoutesConfig {
                 "/api/v1/interviews/${segment}",
                 "lb://interview-service"
             ))
-            .route("notification-service", serviceRoute("/api/notifications/**", "/api/notifications/(?<segment>.*)", "/notifications/${segment}", "lb://notification-service"))
+            .route("notification-service-v1", predicate -> predicate
+                .path("/api/v1/notifications", "/api/v1/notifications/**")
+                .uri("lb://notification-service"))
+            .route("notification-service-legacy", serviceRoute(
+                "/api/notifications/**",
+                "/api/notifications/(?<segment>.*)",
+                "/api/v1/notifications/${segment}",
+                "lb://notification-service"
+            ))
+            .route("analytics-service-v1", predicate -> predicate
+                .path("/api/v1/analytics", "/api/v1/analytics/**")
+                .uri("lb://notification-service"))
+            .route("analytics-service-legacy", serviceRoute(
+                "/api/analytics/**",
+                "/api/analytics/(?<segment>.*)",
+                "/api/v1/analytics/${segment}",
+                "lb://notification-service"
+            ))
             .route("subscription-service", serviceRoute("/api/subscriptions/**", "/api/subscriptions/(?<segment>.*)", "/subscriptions/${segment}", "lb://subscription-service"))
-            .route("analytics-service", serviceRoute("/api/analytics/**", "/api/analytics/(?<segment>.*)", "/analytics/${segment}", "lb://analytics-service"))
             .route("hireconnect-web", serviceRoute("/web/**", "/web/(?<segment>.*)", "/${segment}", "lb://hireconnect-web"))
             .build();
     }

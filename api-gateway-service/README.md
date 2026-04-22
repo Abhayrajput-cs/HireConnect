@@ -29,9 +29,11 @@ The gateway currently defines friendly entry routes for the planned microservice
 - `/api/applications/**` -> `application-service` legacy alias to `/api/v1/applications/**`
 - `/api/v1/interviews/**` -> `interview-service`
 - `/api/interviews/**` -> `interview-service` legacy alias to `/api/v1/interviews/**`
-- `/api/notifications/**` -> `notification-service`
+- `/api/v1/notifications/**` -> `notification-service`
+- `/api/notifications/**` -> `notification-service` legacy alias to `/api/v1/notifications/**`
+- `/api/v1/analytics/**` -> `notification-service` merged analytics endpoints
+- `/api/analytics/**` -> `notification-service` legacy alias to `/api/v1/analytics/**`
 - `/api/subscriptions/**` -> `subscription-service`
-- `/api/analytics/**` -> `analytics-service`
 - `/web/**` -> `hireconnect-web`
 
 ## Run

@@ -1,6 +1,10 @@
 {
-    "eureka":  9428,
-    "auth":  25172,
-    "profile":  14416,
-    "gateway":  21612
+    "eureka":  11944,
+    "gateway":  688,
+    "job":  19596,
+    "interview":  4500,
+    "profile":  11112,
+    "notification":  19756,
+    "application":  7340,
+    "auth":  15572
 }

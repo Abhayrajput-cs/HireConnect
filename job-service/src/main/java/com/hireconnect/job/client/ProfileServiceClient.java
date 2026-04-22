@@ -1,5 +1,8 @@
 package com.hireconnect.job.client;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -41,6 +44,28 @@ public class ProfileServiceClient implements RecruiterDirectoryClient {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Profile service rejected recruiter lookup");
         } catch (ResourceAccessException ex) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Profile service is unavailable for recruiter validation");
+        } catch (RestClientResponseException ex) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Profile service returned an unexpected response");
+        }
+    }
+
+    @Override
+    public List<RecruiterProfileSnapshot> getProfilesByRole(String role) {
+        try {
+            String authorizationHeader = currentAuthorizationHeader();
+            RestClient.RequestHeadersSpec<?> request = restClient.get()
+                .uri("/api/v1/profiles/role/{role}", role);
+            if (StringUtils.hasText(authorizationHeader)) {
+                request = request.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
+            }
+            RecruiterProfileSnapshot[] response = request.retrieve().body(RecruiterProfileSnapshot[].class);
+            return response == null ? List.of() : Arrays.asList(response);
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication is required to query profiles by role");
+        } catch (HttpClientErrorException ex) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Profile service rejected the role query");
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Profile service is unavailable for role-based lookup");
         } catch (RestClientResponseException ex) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Profile service returned an unexpected response");
         }

@@ -23,6 +23,8 @@ import com.hireconnect.interview.dto.InterviewRescheduleRequest;
 import com.hireconnect.interview.dto.InterviewResponse;
 import com.hireconnect.interview.dto.InterviewScheduleRequest;
 import com.hireconnect.interview.exception.ApiException;
+import com.hireconnect.interview.messaging.NotificationEvent;
+import com.hireconnect.interview.messaging.NotificationEventPublisher;
 import com.hireconnect.interview.repository.InterviewRepository;
 
 @Service
@@ -59,17 +61,20 @@ public class InterviewServiceImpl implements InterviewService {
     private final ApplicationCatalogClient applicationCatalogClient;
     private final JobCatalogClient jobCatalogClient;
     private final ProfileDirectoryClient profileDirectoryClient;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     public InterviewServiceImpl(
         InterviewRepository interviewRepository,
         ApplicationCatalogClient applicationCatalogClient,
         JobCatalogClient jobCatalogClient,
-        ProfileDirectoryClient profileDirectoryClient
+        ProfileDirectoryClient profileDirectoryClient,
+        NotificationEventPublisher notificationEventPublisher
     ) {
         this.interviewRepository = interviewRepository;
         this.applicationCatalogClient = applicationCatalogClient;
         this.jobCatalogClient = jobCatalogClient;
         this.profileDirectoryClient = profileDirectoryClient;
+        this.notificationEventPublisher = notificationEventPublisher;
     }
 
     @Override
@@ -77,6 +82,7 @@ public class InterviewServiceImpl implements InterviewService {
         ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
         ApplicationSnapshot application = getSchedulableApplication(request.applicationId());
         JobSnapshot job = jobCatalogClient.getJob(application.jobId());
+        ProfileSnapshot candidate = profileDirectoryClient.getProfileById(application.candidateId());
         validateRecruiterOwnership(recruiter, job);
 
         Interview interview = new Interview();
@@ -93,6 +99,17 @@ public class InterviewServiceImpl implements InterviewService {
         if ("SHORTLISTED".equalsIgnoreCase(application.status())) {
             applicationCatalogClient.markInterviewScheduled(application.applicationId());
         }
+        publishInterviewEvent(
+            "INTERVIEW_SCHEDULED",
+            List.of(application.candidateId(), recruiter.profileId()),
+            List.of(candidate.email(), recruiter.email()),
+            "Interview scheduled for application " + application.applicationId(),
+            "Interview scheduled",
+            "An interview has been scheduled for application " + application.applicationId() + " and job " + job.title(),
+            savedInterview,
+            application,
+            job
+        );
         return toResponse(savedInterview);
     }
 
@@ -109,6 +126,19 @@ public class InterviewServiceImpl implements InterviewService {
 
         interview.setStatus(STATUS_CONFIRMED);
         interviewRepository.save(interview);
+        JobSnapshot job = jobCatalogClient.getJob(application.jobId());
+        ProfileSnapshot recruiter = profileDirectoryClient.getProfileById(job.postedBy());
+        publishInterviewEvent(
+            "INTERVIEW_CONFIRMED",
+            List.of(job.postedBy()),
+            List.of(recruiter.email()),
+            "Candidate confirmed interview for application " + application.applicationId(),
+            "Interview confirmed",
+            "Candidate confirmed the scheduled interview for job " + job.title(),
+            interview,
+            application,
+            job
+        );
         return "Interview confirmed successfully";
     }
 
@@ -121,15 +151,33 @@ public class InterviewServiceImpl implements InterviewService {
 
         ApplicationSnapshot application = applicationCatalogClient.getApplication(interview.getApplicationId());
         String actorRole = currentRole();
+        List<Integer> recipients;
+        List<String> recipientEmails;
+        String eventType;
+        String message;
+        String emailSubject;
+        String emailBody;
+        JobSnapshot job = jobCatalogClient.getJob(application.jobId());
         if (RECRUITER.equals(actorRole)) {
             ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
-            JobSnapshot job = jobCatalogClient.getJob(application.jobId());
             validateRecruiterOwnership(recruiter, job);
             interview.setStatus(STATUS_RESCHEDULED);
+            recipients = List.of(application.candidateId());
+            recipientEmails = List.of(profileDirectoryClient.getProfileById(application.candidateId()).email());
+            eventType = "INTERVIEW_RESCHEDULED";
+            message = "Interview rescheduled for application " + application.applicationId();
+            emailSubject = "Interview rescheduled";
+            emailBody = "Your interview for job " + job.title() + " was rescheduled";
         } else if (CANDIDATE.equals(actorRole)) {
             ProfileSnapshot candidate = requireAuthenticatedProfile(CANDIDATE);
             validateCandidateOwnership(candidate, application);
             interview.setStatus(STATUS_RESCHEDULE_REQUESTED);
+            recipients = List.of(job.postedBy());
+            recipientEmails = List.of(profileDirectoryClient.getProfileById(job.postedBy()).email());
+            eventType = "INTERVIEW_RESCHEDULE_REQUESTED";
+            message = "Candidate requested interview reschedule for application " + application.applicationId();
+            emailSubject = "Interview reschedule requested";
+            emailBody = "Candidate requested a new slot for job " + job.title();
         } else {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only candidates or recruiters can reschedule interviews");
         }
@@ -145,7 +193,9 @@ public class InterviewServiceImpl implements InterviewService {
             interview.setNotes(trimToNull(request.notes()));
         }
         validateModeSpecificFields(interview.getMode(), interview.getMeetLink(), interview.getLocation());
-        return toResponse(interviewRepository.save(interview));
+        Interview savedInterview = interviewRepository.save(interview);
+        publishInterviewEvent(eventType, recipients, recipientEmails, message, emailSubject, emailBody, savedInterview, application, job);
+        return toResponse(savedInterview);
     }
 
     @Override
@@ -155,9 +205,21 @@ public class InterviewServiceImpl implements InterviewService {
         ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
         JobSnapshot job = jobCatalogClient.getJob(application.jobId());
         validateRecruiterOwnership(recruiter, job);
+        ProfileSnapshot candidate = profileDirectoryClient.getProfileById(application.candidateId());
 
         interview.setStatus(STATUS_CANCELED);
         interviewRepository.save(interview);
+        publishInterviewEvent(
+            "INTERVIEW_CANCELED",
+            List.of(application.candidateId(), recruiter.profileId()),
+            List.of(candidate.email(), recruiter.email()),
+            "Interview canceled for application " + application.applicationId(),
+            "Interview canceled",
+            "The interview for job " + job.title() + " was canceled",
+            interview,
+            application,
+            job
+        );
     }
 
     @Override
@@ -334,5 +396,35 @@ public class InterviewServiceImpl implements InterviewService {
             interview.getStatus(),
             interview.getNotes()
         );
+    }
+
+    private void publishInterviewEvent(
+        String eventType,
+        List<Integer> recipients,
+        List<String> recipientEmails,
+        String message,
+        String emailSubject,
+        String emailBody,
+        Interview interview,
+        ApplicationSnapshot application,
+        JobSnapshot job
+    ) {
+        notificationEventPublisher.publish(new NotificationEvent(
+            eventType,
+            "INTERVIEW",
+            message,
+            recipients,
+            recipientEmails,
+            null,
+            emailSubject,
+            emailBody,
+            application.applicationId(),
+            application.jobId(),
+            job.postedBy(),
+            application.candidateId(),
+            "INTERVIEW_SCHEDULED",
+            null,
+            LocalDateTime.now()
+        ));
     }
 }
