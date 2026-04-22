@@ -34,7 +34,10 @@ import com.hireconnect.application.client.CandidateProfileSnapshot;
 import com.hireconnect.application.client.JobCatalogClient;
 import com.hireconnect.application.client.JobSnapshot;
 import com.hireconnect.application.exception.ApiException;
+import com.hireconnect.application.security.AuthValidationClient;
+import com.hireconnect.application.security.AuthenticatedUser;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -164,6 +167,22 @@ class ApplicationSecurityIntegrationTest {
 
     @TestConfiguration
     static class TestClientConfig {
+
+        @Bean
+        @Primary
+        AuthValidationClient authValidationClient() {
+            return new AuthValidationClient("http://localhost:8081") {
+                @Override
+                public AuthenticatedUser validateAccessToken(String token) {
+                    Claims claims = Jwts.parser()
+                        .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET)))
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+                    return new AuthenticatedUser(claims.getSubject(), claims.get("role", String.class));
+                }
+            };
+        }
 
         @Bean
         @Primary

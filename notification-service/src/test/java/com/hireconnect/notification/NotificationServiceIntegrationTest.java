@@ -39,7 +39,10 @@ import com.hireconnect.notification.client.JobServiceClient;
 import com.hireconnect.notification.client.JobSnapshot;
 import com.hireconnect.notification.client.ProfileServiceClient;
 import com.hireconnect.notification.client.ProfileSnapshot;
+import com.hireconnect.notification.security.AuthValidationClient;
+import com.hireconnect.notification.security.AuthenticatedUser;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -239,6 +242,22 @@ class NotificationServiceIntegrationTest {
 
     @TestConfiguration
     static class TestClientConfig {
+
+        @Bean
+        @Primary
+        AuthValidationClient authValidationClient() {
+            return new AuthValidationClient(new org.springframework.web.client.RestTemplate(), "http://localhost:8081") {
+                @Override
+                public AuthenticatedUser validateAccessToken(String token) {
+                    Claims claims = Jwts.parser()
+                        .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET)))
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+                    return new AuthenticatedUser(claims.getSubject(), claims.get("role", String.class));
+                }
+            };
+        }
 
         @Bean
         @Primary

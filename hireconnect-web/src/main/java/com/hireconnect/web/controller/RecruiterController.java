@@ -16,13 +16,11 @@ import com.hireconnect.web.dto.JobForm;
 import com.hireconnect.web.dto.PortalSession;
 import com.hireconnect.web.dto.ProfileResponse;
 import com.hireconnect.web.dto.RecruiterProfileForm;
-import com.hireconnect.web.dto.SubscriptionSelectionForm;
 import com.hireconnect.web.service.AnalyticsService;
 import com.hireconnect.web.service.ApplicationService;
 import com.hireconnect.web.service.InterviewService;
 import com.hireconnect.web.service.JobService;
 import com.hireconnect.web.service.ProfileService;
-import com.hireconnect.web.service.SubscriptionService;
 import com.hireconnect.web.support.PortalException;
 import com.hireconnect.web.support.PortalSessionService;
 
@@ -38,7 +36,6 @@ public class RecruiterController {
     private final ApplicationService applicationService;
     private final InterviewService interviewService;
     private final AnalyticsService analyticsService;
-    private final SubscriptionService subscriptionService;
     private final PortalSessionService portalSessionService;
 
     public RecruiterController(
@@ -47,7 +44,6 @@ public class RecruiterController {
         ApplicationService applicationService,
         InterviewService interviewService,
         AnalyticsService analyticsService,
-        SubscriptionService subscriptionService,
         PortalSessionService portalSessionService
     ) {
         this.profileService = profileService;
@@ -55,7 +51,6 @@ public class RecruiterController {
         this.applicationService = applicationService;
         this.interviewService = interviewService;
         this.analyticsService = analyticsService;
-        this.subscriptionService = subscriptionService;
         this.portalSessionService = portalSessionService;
     }
 
@@ -68,7 +63,6 @@ public class RecruiterController {
         modelAndView.addObject("profile", profile);
         modelAndView.addObject("profileForm", profile == null ? defaultRecruiterForm(portalSession) : profileService.toRecruiterForm(profile));
         modelAndView.addObject("jobs", profile == null ? List.of() : jobService.getJobsByRecruiter(profile.profileId(), portalSession));
-        modelAndView.addObject("currentSubscription", profile == null ? null : subscriptionService.getCurrentSubscription(profile.profileId()));
         return modelAndView;
     }
 
@@ -171,34 +165,6 @@ public class RecruiterController {
         modelAndView.addObject("summary", analyticsService.getRecruiterStats(profile.profileId(), portalSession));
         modelAndView.addObject("timeToHire", analyticsService.getTimeToHire(profile.profileId(), portalSession));
         modelAndView.addObject("topCategories", analyticsService.getTopJobCategories(portalSession));
-        return modelAndView;
-    }
-
-    @GetMapping("/subscription")
-    public ModelAndView managePlan(HttpSession session) {
-        PortalSession portalSession = portalSessionService.requireRole(session, "RECRUITER");
-        ProfileResponse profile = requireRecruiterProfile(portalSession);
-        ModelAndView modelAndView = new ModelAndView("recruiter/subscription");
-        modelAndView.addObject("plans", subscriptionService.getActivePlans());
-        modelAndView.addObject("currentSubscription", subscriptionService.getCurrentSubscription(profile.profileId()));
-        modelAndView.addObject("subscriptionForm", new SubscriptionSelectionForm());
-        return modelAndView;
-    }
-
-    @PostMapping("/subscription")
-    public String savePlan(@Valid @ModelAttribute("subscriptionForm") SubscriptionSelectionForm subscriptionForm, HttpSession session) {
-        PortalSession portalSession = portalSessionService.requireRole(session, "RECRUITER");
-        ProfileResponse profile = requireRecruiterProfile(portalSession);
-        subscriptionService.subscribe(profile.profileId(), subscriptionForm.getPlanCode(), subscriptionForm.isAutoRenew());
-        return "redirect:/recruiter/invoices";
-    }
-
-    @GetMapping("/invoices")
-    public ModelAndView viewInvoices(HttpSession session) {
-        PortalSession portalSession = portalSessionService.requireRole(session, "RECRUITER");
-        ProfileResponse profile = requireRecruiterProfile(portalSession);
-        ModelAndView modelAndView = new ModelAndView("recruiter/invoices");
-        modelAndView.addObject("invoices", subscriptionService.getInvoicesForRecruiter(profile.profileId()));
         return modelAndView;
     }
 

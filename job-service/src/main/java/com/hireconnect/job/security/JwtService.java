@@ -30,12 +30,8 @@ public class JwtService {
 
     public AuthenticatedUser resolveAuthenticatedUser(String token) {
         Claims claims = safeParseAccessToken(token);
-        if (claims != null) {
-            String email = claims.getSubject();
-            String role = claims.get("role", String.class);
-            if (email != null && role != null) {
-                return new AuthenticatedUser(email, role);
-            }
+        if (claims == null) {
+            return null;
         }
         return authValidationClient.validateAccessToken(token);
     }

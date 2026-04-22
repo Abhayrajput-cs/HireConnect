@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.hireconnect.web.dto.PortalSession;
@@ -21,7 +20,6 @@ import com.hireconnect.web.dto.SuspendUserForm;
 import com.hireconnect.web.service.AdminSupportService;
 import com.hireconnect.web.service.AnalyticsService;
 import com.hireconnect.web.service.JobService;
-import com.hireconnect.web.service.SubscriptionService;
 import com.hireconnect.web.support.PortalSessionService;
 
 import jakarta.servlet.http.HttpSession;
@@ -33,20 +31,17 @@ public class AdminController {
 
     private final AdminSupportService adminSupportService;
     private final AnalyticsService analyticsService;
-    private final SubscriptionService subscriptionService;
     private final JobService jobService;
     private final PortalSessionService portalSessionService;
 
     public AdminController(
         AdminSupportService adminSupportService,
         AnalyticsService analyticsService,
-        SubscriptionService subscriptionService,
         JobService jobService,
         PortalSessionService portalSessionService
     ) {
         this.adminSupportService = adminSupportService;
         this.analyticsService = analyticsService;
-        this.subscriptionService = subscriptionService;
         this.jobService = jobService;
         this.portalSessionService = portalSessionService;
     }
@@ -57,8 +52,7 @@ public class AdminController {
         ModelAndView modelAndView = new ModelAndView("admin/dashboard");
         modelAndView.addObject("sessionUser", portalSession);
         modelAndView.addObject("platformSummary", analyticsService.getPlatformStats(portalSession));
-        modelAndView.addObject("activeSubscriptions", subscriptionService.getAllSubscriptions().size());
-        modelAndView.addObject("invoiceCount", subscriptionService.getAllInvoices().size());
+        modelAndView.addObject("suspendedCount", adminSupportService.getSuspendedUserMap().size());
         return modelAndView;
     }
 
@@ -110,30 +104,6 @@ public class AdminController {
         ModelAndView modelAndView = new ModelAndView("admin/analytics");
         modelAndView.addObject("platformSummary", analyticsService.getPlatformStats(portalSession));
         modelAndView.addObject("topCategories", analyticsService.getTopJobCategories(portalSession));
-        return modelAndView;
-    }
-
-    @GetMapping("/subscriptions")
-    public ModelAndView manageSubscriptions(HttpSession session) {
-        portalSessionService.requireRole(session, "ADMIN");
-        ModelAndView modelAndView = new ModelAndView("admin/subscriptions");
-        modelAndView.addObject("plans", subscriptionService.getAllPlans());
-        modelAndView.addObject("subscriptions", subscriptionService.getAllSubscriptions());
-        return modelAndView;
-    }
-
-    @PostMapping("/subscriptions/{planId}/toggle")
-    public String togglePlan(@PathVariable Long planId, @RequestParam boolean active, HttpSession session) {
-        portalSessionService.requireRole(session, "ADMIN");
-        subscriptionService.togglePlan(planId, active);
-        return "redirect:/admin/subscriptions";
-    }
-
-    @GetMapping("/invoices")
-    public ModelAndView viewAllInvoices(HttpSession session) {
-        portalSessionService.requireRole(session, "ADMIN");
-        ModelAndView modelAndView = new ModelAndView("admin/invoices");
-        modelAndView.addObject("invoices", subscriptionService.getAllInvoices());
         return modelAndView;
     }
 

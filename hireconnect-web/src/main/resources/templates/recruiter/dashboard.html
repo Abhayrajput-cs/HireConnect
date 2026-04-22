@@ -3,7 +3,7 @@
 <head><meta charset="UTF-8"><title>Recruiter Dashboard</title></head>
 <body>
 <h1>Recruiter Dashboard</h1>
-<p><a href="/recruiter/jobs/new">Post Job</a> | <a href="/recruiter/analytics">Analytics</a> | <a href="/recruiter/subscription">Manage Plan</a> | <a href="/recruiter/invoices">Invoices</a></p>
+<p><a href="/recruiter/jobs/new">Post Job</a> | <a href="/recruiter/analytics">Analytics</a></p>
 <form action="/logout" method="post"><button type="submit">Logout</button></form>
 <h2>Profile</h2>
 <form th:action="@{/recruiter/profile}" th:object="${profileForm}" method="post">
@@ -16,9 +16,6 @@
     <label>Website <input th:field="*{website}"></label><br>
     <button type="submit">Save Recruiter Profile</button>
 </form>
-<h2>Current Plan</h2>
-<p th:if="${currentSubscription}" th:text="${currentSubscription.planName + ' (' + currentSubscription.status + ')'}">No plan</p>
-<p th:unless="${currentSubscription}">No active subscription yet.</p>
 <h2>Your Jobs</h2>
 <table border="1">
     <thead><tr><th>Title</th><th>Status</th><th>Actions</th></tr></thead>

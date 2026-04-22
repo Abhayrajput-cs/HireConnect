@@ -1,11 +1,47 @@
-{
-    "eureka":  25380,
-    "gateway":  24344,
-    "auth":  29524,
-    "profile":  7116,
-    "job":  10928,
-    "application":  23308,
-    "interview":  22664,
-    "notification":  8824,
-    "web":  20896
-}
+[
+    {
+        "name":  "eureka-service",
+        "pid":  14204,
+        "path":  "D:\\HireConnectt\\eureka-service"
+    },
+    {
+        "name":  "api-gateway-service",
+        "pid":  14420,
+        "path":  "D:\\HireConnectt\\api-gateway-service"
+    },
+    {
+        "name":  "auth-service",
+        "pid":  9392,
+        "path":  "D:\\HireConnectt\\auth-service"
+    },
+    {
+        "name":  "profile-service",
+        "pid":  17192,
+        "path":  "D:\\HireConnectt\\profile-service"
+    },
+    {
+        "name":  "job-service",
+        "pid":  10776,
+        "path":  "D:\\HireConnectt\\job-service"
+    },
+    {
+        "name":  "application-service",
+        "pid":  15652,
+        "path":  "D:\\HireConnectt\\application-service"
+    },
+    {
+        "name":  "interview-service",
+        "pid":  17544,
+        "path":  "D:\\HireConnectt\\interview-service"
+    },
+    {
+        "name":  "notification-service",
+        "pid":  11756,
+        "path":  "D:\\HireConnectt\\notification-service"
+    },
+    {
+        "name":  "hireconnect-web",
+        "pid":  13724,
+        "path":  "D:\\HireConnectt\\hireconnect-web"
+    }
+]

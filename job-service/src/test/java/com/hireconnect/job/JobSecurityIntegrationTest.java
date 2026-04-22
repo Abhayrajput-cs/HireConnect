@@ -30,7 +30,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.hireconnect.job.client.RecruiterDirectoryClient;
 import com.hireconnect.job.client.RecruiterProfileSnapshot;
 import com.hireconnect.job.exception.ApiException;
+import com.hireconnect.job.security.AuthValidationClient;
+import com.hireconnect.job.security.AuthenticatedUser;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -132,6 +135,22 @@ class JobSecurityIntegrationTest {
 
     @TestConfiguration
     static class TestClientConfig {
+
+        @Bean
+        @Primary
+        AuthValidationClient authValidationClient() {
+            return new AuthValidationClient("http://localhost:8081") {
+                @Override
+                public AuthenticatedUser validateAccessToken(String token) {
+                    Claims claims = Jwts.parser()
+                        .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET)))
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+                    return new AuthenticatedUser(claims.getSubject(), claims.get("role", String.class));
+                }
+            };
+        }
 
         @Bean
         @Primary
