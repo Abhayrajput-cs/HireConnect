@@ -33,7 +33,6 @@ The gateway currently defines friendly entry routes for the planned microservice
 - `/api/notifications/**` -> `notification-service` legacy alias to `/api/v1/notifications/**`
 - `/api/v1/analytics/**` -> `notification-service` merged analytics endpoints
 - `/api/analytics/**` -> `notification-service` legacy alias to `/api/v1/analytics/**`
-- `/api/subscriptions/**` -> `subscription-service`
 - `/web/**` -> `hireconnect-web`
 
 ## Run

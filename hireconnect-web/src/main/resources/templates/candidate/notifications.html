@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Notifications</title></head>
+<body>
+<h1>Your Notifications</h1>
+<p>Unread count: <strong th:text="${unreadCount}">0</strong></p>
+<table border="1">
+    <thead><tr><th>Type</th><th>Message</th><th>Read</th><th>Created</th></tr></thead>
+    <tbody>
+    <tr th:each="notification : ${notifications}">
+        <td th:text="${notification.type()}"></td>
+        <td th:text="${notification.message()}"></td>
+        <td th:text="${notification.isRead()}"></td>
+        <td th:text="${notification.createdAt()}"></td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

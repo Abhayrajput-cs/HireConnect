@@ -60,7 +60,10 @@ public class GatewayRoutesConfig {
                 "/api/v1/analytics/${segment}",
                 "lb://notification-service"
             ))
-            .route("subscription-service", serviceRoute("/api/subscriptions/**", "/api/subscriptions/(?<segment>.*)", "/subscriptions/${segment}", "lb://subscription-service"))
+            .route("hireconnect-web-root", predicate -> predicate
+                .path("/web", "/web/")
+                .filters(filter -> filter.rewritePath("/web/?", "/"))
+                .uri("lb://hireconnect-web"))
             .route("hireconnect-web", serviceRoute("/web/**", "/web/(?<segment>.*)", "/${segment}", "lb://hireconnect-web"))
             .build();
     }

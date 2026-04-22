@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Applications</title></head>
+<body>
+<h1>Your Applications</h1>
+<p><a href="/candidate/jobs">Jobs</a> | <a href="/candidate/interviews">Interviews</a> | <a href="/candidate/notifications">Notifications</a></p>
+<table border="1">
+    <thead><tr><th>Application</th><th>Job</th><th>Status</th><th>Applied At</th></tr></thead>
+    <tbody>
+    <tr th:each="appItem : ${applications}">
+        <td th:text="${appItem.applicationId()}"></td>
+        <td th:text="${appItem.jobId()}"></td>
+        <td th:text="${appItem.status()}"></td>
+        <td th:text="${appItem.appliedAt()}"></td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

@@ -39,7 +39,7 @@ class ApiGatewayServiceApplicationTests {
             "notification-service-legacy",
             "analytics-service-v1",
             "analytics-service-legacy",
-            "subscription-service",
+            "hireconnect-web-root",
             "hireconnect-web"
         );
     }
