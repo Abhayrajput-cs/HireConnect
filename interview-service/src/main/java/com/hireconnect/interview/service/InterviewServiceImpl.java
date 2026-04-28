@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -78,6 +80,10 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
     public InterviewResponse scheduleInterview(InterviewScheduleRequest request) {
         ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
         ApplicationSnapshot application = getSchedulableApplication(request.applicationId());
@@ -114,6 +120,10 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
     public String confirmInterview(Integer interviewId) {
         Interview interview = getRequiredInterview(interviewId);
         if (!CONFIRMABLE_STATUSES.contains(interview.getStatus())) {
@@ -143,6 +153,10 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
     public InterviewResponse rescheduleInterview(Integer interviewId, InterviewRescheduleRequest request) {
         Interview interview = getRequiredInterview(interviewId);
         if (!RESCHEDULABLE_STATUSES.contains(interview.getStatus())) {
@@ -199,6 +213,10 @@ public class InterviewServiceImpl implements InterviewService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
     public void cancelInterview(Integer interviewId) {
         Interview interview = getRequiredInterview(interviewId);
         ApplicationSnapshot application = applicationCatalogClient.getApplication(interview.getApplicationId());
@@ -224,6 +242,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "interviewByApplication", key = "#applicationId")
     public List<InterviewResponse> getByApplication(Integer applicationId) {
         ApplicationSnapshot application = applicationCatalogClient.getApplication(applicationId);
         validateReadAccess(application);
@@ -234,6 +253,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "interviewByStatus", key = "#status.trim().toUpperCase().replace(' ','_').replace('-','_')")
     public List<InterviewResponse> getByStatus(String status) {
         requireAuthenticatedProfile(RECRUITER);
         return interviewRepository.findByStatusOrderByScheduledAtAsc(normalizeStatus(status)).stream()
@@ -243,6 +263,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "interviewByRange")
     public List<InterviewResponse> getByScheduledRange(LocalDateTime scheduledFrom, LocalDateTime scheduledTo) {
         requireAuthenticatedProfile(RECRUITER);
         if (scheduledFrom.isAfter(scheduledTo)) {
@@ -255,6 +276,7 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "interviewById", key = "#interviewId")
     public InterviewResponse getById(Integer interviewId) {
         Interview interview = getRequiredInterview(interviewId);
         ApplicationSnapshot application = applicationCatalogClient.getApplication(interview.getApplicationId());

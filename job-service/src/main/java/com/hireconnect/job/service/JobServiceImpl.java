@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,13 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "jobAll", "jobById", "jobByTitle", "jobsByCategory", "jobsByLocation", "jobsByStatus",
+            "jobsByRecruiter", "jobSearchResults"
+        },
+        allEntries = true
+    )
     public JobResponse addJob(JobRequest request) {
         validateSalaryRange(request.salaryMin(), request.salaryMax());
         ensureRecruiterOwner(request.postedBy());
@@ -90,6 +99,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobAll")
     public List<JobResponse> getAllJobs() {
         return jobRepository.findAll().stream()
             .map(this::toResponse)
@@ -98,12 +108,14 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobById", key = "#jobId")
     public JobResponse getJobById(Integer jobId) {
         return toResponse(loadJob(jobId));
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobByTitle", key = "#title.trim().toLowerCase()")
     public JobResponse getJobByTitle(String title) {
         return toResponse(jobRepository.findByTitle(requiredText(title, "title"))
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Job not found with title: " + title)));
@@ -111,6 +123,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobsByCategory", key = "#category.trim().toLowerCase()")
     public List<JobResponse> getJobsByCategory(String category) {
         return jobRepository.findByCategoryIgnoreCase(requiredText(category, "category")).stream()
             .map(this::toResponse)
@@ -119,6 +132,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobsByLocation", key = "#location.trim().toLowerCase()")
     public List<JobResponse> getJobsByLocation(String location) {
         return jobRepository.findByLocationContainingIgnoreCase(requiredText(location, "location")).stream()
             .map(this::toResponse)
@@ -127,6 +141,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobsByStatus", key = "#status.trim().toUpperCase()")
     public List<JobResponse> getJobsByStatus(String status) {
         return jobRepository.findByStatusIgnoreCase(normalizeStatus(status)).stream()
             .map(this::toResponse)
@@ -135,6 +150,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobsByRecruiter", key = "#postedBy")
     public List<JobResponse> getJobsByRecruiter(Integer postedBy) {
         return jobRepository.findByPostedBy(postedBy).stream()
             .map(this::toResponse)
@@ -143,6 +159,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "jobSearchResults")
     public List<JobResponse> searchJobs(
         String title,
         String category,
@@ -169,6 +186,13 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "jobAll", "jobById", "jobByTitle", "jobsByCategory", "jobsByLocation", "jobsByStatus",
+            "jobsByRecruiter", "jobSearchResults"
+        },
+        allEntries = true
+    )
     public JobResponse updateJob(Integer jobId, Map<String, Object> updates) {
         Job job = loadJob(jobId);
 
@@ -181,6 +205,13 @@ public class JobServiceImpl implements JobService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "jobAll", "jobById", "jobByTitle", "jobsByCategory", "jobsByLocation", "jobsByStatus",
+            "jobsByRecruiter", "jobSearchResults"
+        },
+        allEntries = true
+    )
     public void deleteJob(Integer jobId) {
         jobRepository.delete(loadJob(jobId));
     }

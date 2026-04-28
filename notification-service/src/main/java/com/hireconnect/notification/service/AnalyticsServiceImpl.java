@@ -9,6 +9,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,6 +52,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsJobViewCount", key = "#jobId")
     public int getJobViewCount(Integer jobId) {
         validateJob(jobId);
         return Math.toIntExact(jobViewMetricRepository.findById(jobId).map(JobViewMetric::getViewCount).orElse(0L));
@@ -57,6 +60,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsAppCountByJob", key = "#jobId")
     public int getAppCountByJob(Integer jobId) {
         validateJob(jobId);
         return applicationMetricRepository.countByJobId(jobId);
@@ -64,6 +68,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsViewToApplyRatio", key = "#jobId")
     public double getViewToApplyRatio(Integer jobId) {
         int applications = getAppCountByJob(jobId);
         if (applications == 0) {
@@ -74,6 +79,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsTimeToHire", key = "#recruiterId")
     public double getTimeToHire(Integer recruiterId) {
         enforceRecruiterAccess(recruiterId);
         return averageTimeToHire(applicationMetricRepository.findByRecruiterIdAndOfferedAtIsNotNull(recruiterId));
@@ -81,6 +87,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsPipelineStats", key = "#recruiterId")
     public AnalyticsSummary getPipelineStats(Integer recruiterId) {
         enforceRecruiterAccess(recruiterId);
         List<JobSnapshot> jobs = jobServiceClient.getJobsByRecruiter(recruiterId);
@@ -89,12 +96,14 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsPlatformStats")
     public AnalyticsSummary getPlatformStats() {
         return buildSummary(jobServiceClient.getAllJobs());
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "analyticsTopJobCategories")
     public Map<String, Long> getTopJobCategories() {
         return jobServiceClient.getAllJobs().stream()
             .filter(job -> StringUtils.hasText(job.category()))
@@ -111,6 +120,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "analyticsJobViewCount", "analyticsViewToApplyRatio", "analyticsPipelineStats", "analyticsPlatformStats"
+        },
+        allEntries = true
+    )
     public long recordJobView(Integer jobId) {
         validateJob(jobId);
         JobViewMetric metric = jobViewMetricRepository.findById(jobId).orElseGet(JobViewMetric::new);

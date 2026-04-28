@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,10 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"profileById", "profileByEmail", "profileByMobile", "profilesAll", "profilesByRole"},
+        allEntries = true
+    )
     public ProfileResponse addCandidateProfile(CandidateProfileRequest request) {
         String email = normalizeEmail(request.email());
         ensureEmailAvailable(email, null);
@@ -61,6 +67,10 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"profileById", "profileByEmail", "profileByMobile", "profilesAll", "profilesByRole"},
+        allEntries = true
+    )
     public ProfileResponse addRecruiterProfile(RecruiterProfileRequest request) {
         String email = normalizeEmail(request.email());
         ensureEmailAvailable(email, null);
@@ -83,6 +93,10 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"profileById", "profileByEmail", "profileByMobile", "profilesAll", "profilesByRole"},
+        allEntries = true
+    )
     public ProfileResponse updateProfile(Integer profileId, Map<String, Object> updates) {
         UserProfile profile = loadProfile(profileId);
 
@@ -94,6 +108,10 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {"profileById", "profileByEmail", "profileByMobile", "profilesAll", "profilesByRole"},
+        allEntries = true
+    )
     public void deleteProfile(Integer profileId) {
         UserProfile profile = loadProfile(profileId);
         profileRepository.delete(profile);
@@ -101,12 +119,14 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "profileById", key = "#profileId")
     public ProfileResponse getProfileById(Integer profileId) {
         return toResponse(loadProfile(profileId));
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "profileByEmail", key = "#email.trim().toLowerCase()")
     public ProfileResponse getByEmail(String email) {
         return toResponse(profileRepository.findByEmail(normalizeEmail(email))
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found with email: " + email)));
@@ -114,6 +134,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "profileByMobile", key = "#mobile")
     public ProfileResponse getByMobile(Long mobile) {
         return toResponse(profileRepository.findByMobile(mobile)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Profile not found with mobile: " + mobile)));
@@ -121,6 +142,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "profilesAll")
     public List<ProfileResponse> getAllProfiles() {
         return profileRepository.findAll().stream()
             .map(this::toResponse)
@@ -129,6 +151,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "profilesByRole", key = "#role.trim().toUpperCase()")
     public List<ProfileResponse> getAllProfilesByRole(String role) {
         String normalizedRole = normalizeRole(role);
         return profileRepository.findAllByRole(normalizedRole).stream()

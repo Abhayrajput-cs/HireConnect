@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -69,6 +71,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "applicationByCandidate", "applicationByJob", "applicationByStatus",
+            "applicationByDateRange", "applicationById", "applicationCountByJob"
+        },
+        allEntries = true
+    )
     public ApplicationResponse submitApplication(ApplicationRequest request) {
         CandidateProfileSnapshot candidateProfile = candidateDirectoryClient.getCandidateProfile(request.candidateId());
         validateCandidate(candidateProfile, request.candidateId());
@@ -106,6 +115,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationByCandidate", key = "#candidateId")
     public List<ApplicationResponse> getByCandidate(Integer candidateId) {
         enforceCandidateOwnershipIfNeeded(candidateId);
         return applicationRepository.findByCandidateIdOrderByAppliedAtDesc(candidateId).stream()
@@ -115,6 +125,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationByJob", key = "#jobId")
     public List<ApplicationResponse> getByJob(Integer jobId) {
         validateJob(jobCatalogClient.getJob(jobId), jobId);
         return applicationRepository.findByJobIdOrderByAppliedAtDesc(jobId).stream()
@@ -124,6 +135,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationByStatus", key = "#status.trim().toUpperCase().replace(' ','_')")
     public List<ApplicationResponse> getByStatus(String status) {
         String normalizedStatus = normalizeStatus(status);
         return applicationRepository.findByStatusOrderByAppliedAtDesc(normalizedStatus).stream()
@@ -133,6 +145,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationByDateRange")
     public List<ApplicationResponse> getByAppliedDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "appliedFrom must be on or before appliedTo");
@@ -144,6 +157,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationById", key = "#applicationId")
     public ApplicationResponse getById(Integer applicationId) {
         Application application = getRequiredApplication(applicationId);
         enforceReadAccessIfCandidate(application);
@@ -151,6 +165,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "applicationByCandidate", "applicationByJob", "applicationByStatus",
+            "applicationByDateRange", "applicationById", "applicationCountByJob"
+        },
+        allEntries = true
+    )
     public ApplicationResponse updateStatus(Integer applicationId, String status) {
         Application application = getRequiredApplication(applicationId);
         ApplicationStatus currentStatus = ApplicationStatus.from(application.getStatus());
@@ -185,6 +206,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "applicationByCandidate", "applicationByJob", "applicationByStatus",
+            "applicationByDateRange", "applicationById", "applicationCountByJob"
+        },
+        allEntries = true
+    )
     public ApplicationResponse withdrawApplication(Integer applicationId) {
         Application application = getRequiredApplication(applicationId);
         CandidateProfileSnapshot candidateProfile = candidateDirectoryClient.getCandidateProfile(application.getCandidateId());
@@ -218,6 +246,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "applicationCountByJob", key = "#jobId")
     public int countByJob(Integer jobId) {
         validateJob(jobCatalogClient.getJob(jobId), jobId);
         return applicationRepository.countByJobId(jobId);

@@ -11,6 +11,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -58,6 +60,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @CacheEvict(
+        cacheNames = {
+            "notificationsByUser", "notificationUnreadCount", "analyticsJobViewCount", "analyticsAppCountByJob",
+            "analyticsViewToApplyRatio", "analyticsTimeToHire", "analyticsPipelineStats", "analyticsPlatformStats",
+            "analyticsTopJobCategories"
+        },
+        allEntries = true
+    )
     public void sendNotification(NotificationEvent event) {
         LocalDateTime occurredAt = event.getOccurredAt() == null ? LocalDateTime.now() : event.getOccurredAt();
         RecipientResolution recipients = resolveRecipients(event);
@@ -89,6 +99,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"notificationsByUser", "notificationUnreadCount"}, allEntries = true)
     public void markAsRead(Integer notificationId) {
         Notification notification = getRequiredNotification(notificationId);
         enforceNotificationOwnership(notification);
@@ -97,6 +108,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"notificationsByUser", "notificationUnreadCount"}, allEntries = true)
     public void markAllRead(Integer userId) {
         enforceUserAccess(userId);
         List<Notification> notifications = notificationRepository.findByUserIdAndIsReadOrderByCreatedAtDesc(userId, false);
@@ -108,6 +120,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "notificationsByUser")
     public List<NotificationResponse> getByUser(Integer userId, Boolean isRead) {
         enforceUserAccess(userId);
         List<Notification> notifications = isRead == null
@@ -118,6 +131,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"notificationsByUser", "notificationUnreadCount"}, allEntries = true)
     public void deleteNotification(Integer notificationId) {
         Notification notification = getRequiredNotification(notificationId);
         enforceNotificationOwnership(notification);
@@ -149,6 +163,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "notificationUnreadCount", key = "#userId")
     public int getUnreadCount(Integer userId) {
         enforceUserAccess(userId);
         return notificationRepository.countByUserIdAndIsRead(userId, false);
