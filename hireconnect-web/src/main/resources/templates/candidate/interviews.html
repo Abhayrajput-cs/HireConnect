@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Interviews</title></head>
+<body>
+<h1>Your Interviews</h1>
+<p><a href="/candidate/jobs">Jobs</a> | <a href="/candidate/applications">Applications</a></p>
+<table border="1">
+    <thead><tr><th>Interview</th><th>Application</th><th>Scheduled</th><th>Status</th><th>Mode</th></tr></thead>
+    <tbody>
+    <tr th:each="interview : ${interviews}">
+        <td th:text="${interview.interviewId()}"></td>
+        <td th:text="${interview.applicationId()}"></td>
+        <td th:text="${interview.scheduledAt()}"></td>
+        <td th:text="${interview.status()}"></td>
+        <td th:text="${interview.mode()}"></td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

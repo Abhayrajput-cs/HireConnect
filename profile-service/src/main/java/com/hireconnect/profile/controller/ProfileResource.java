@@ -3,7 +3,10 @@ package com.hireconnect.profile.controller;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,11 +18,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.hireconnect.profile.dto.CandidateProfileRequest;
 import com.hireconnect.profile.dto.ProfileResponse;
 import com.hireconnect.profile.dto.RecruiterProfileRequest;
+import com.hireconnect.profile.dto.ResumeUploadResponse;
 import com.hireconnect.profile.service.ProfileService;
+import com.hireconnect.profile.service.ResumeStorageService;
 
 import jakarta.validation.Valid;
 
@@ -29,9 +35,11 @@ import jakarta.validation.Valid;
 public class ProfileResource {
 
     private final ProfileService profileService;
+    private final ResumeStorageService resumeStorageService;
 
-    public ProfileResource(ProfileService profileService) {
+    public ProfileResource(ProfileService profileService, ResumeStorageService resumeStorageService) {
         this.profileService = profileService;
+        this.resumeStorageService = resumeStorageService;
     }
 
     @PostMapping("/candidates")
@@ -42,6 +50,20 @@ public class ProfileResource {
     @PostMapping("/recruiters")
     public ResponseEntity<ProfileResponse> addRecruiter(@Valid @RequestBody RecruiterProfileRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(profileService.addRecruiterProfile(request));
+    }
+
+    @PostMapping(value = "/resumes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResumeUploadResponse> uploadResume(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(resumeStorageService.uploadResume(file));
+    }
+
+    @GetMapping("/resumes/{fileName:.+}")
+    public ResponseEntity<Resource> getResume(@PathVariable String fileName) {
+        Resource resource = resumeStorageService.loadResume(fileName);
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(resumeStorageService.determineContentType(fileName)))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+            .body(resource);
     }
 
     @GetMapping

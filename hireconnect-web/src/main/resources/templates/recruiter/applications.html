@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Applications</title></head>
+<body>
+<h1 th:text="'Applications for ' + ${job.title()}">Applications</h1>
+<table border="1">
+    <thead><tr><th>Application</th><th>Candidate</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+    <tr th:each="appItem : ${applications}">
+        <td th:text="${appItem.applicationId()}"></td>
+        <td th:text="${appItem.candidateId()}"></td>
+        <td th:text="${appItem.status()}"></td>
+        <td>
+            <form th:action="@{'/recruiter/applications/' + ${appItem.applicationId()} + '/shortlist'}" method="post" style="display:inline">
+                <button type="submit">Shortlist</button>
+            </form>
+            <form th:action="@{'/recruiter/applications/' + ${appItem.applicationId()} + '/reject'}" method="post" style="display:inline">
+                <button type="submit">Reject</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<h2>Schedule Interview</h2>
+<form th:action="@{/recruiter/interviews}" th:object="${scheduleForm}" method="post">
+    <label>Application Id <input th:field="*{applicationId}"></label><br>
+    <label>Scheduled At <input type="datetime-local" th:field="*{scheduledAt}"></label><br>
+    <label>Mode <input th:field="*{mode}"></label><br>
+    <label>Meet Link <input th:field="*{meetLink}"></label><br>
+    <label>Location <input th:field="*{location}"></label><br>
+    <label>Notes <textarea th:field="*{notes}"></textarea></label><br>
+    <button type="submit">Schedule</button>
+</form>
+</body>
+</html>

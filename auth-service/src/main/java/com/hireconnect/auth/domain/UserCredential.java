@@ -1,5 +1,6 @@
 package com.hireconnect.auth.domain;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -33,6 +34,9 @@ public class UserCredential {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "tokens_invalid_before")
+    private Instant tokensInvalidBefore;
 
     public Integer getUserId() {
         return userId;
@@ -76,6 +80,14 @@ public class UserCredential {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getTokensInvalidBefore() {
+        return tokensInvalidBefore;
+    }
+
+    public void setTokensInvalidBefore(Instant tokensInvalidBefore) {
+        this.tokensInvalidBefore = tokensInvalidBefore;
     }
 
     @PrePersist

@@ -222,8 +222,8 @@ class AuthServiceIntegrationTest {
                     }
                     """.formatted(accessToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.valid").value(true))
-            .andExpect(jsonPath("$.message").value("Token is valid"));
+            .andExpect(jsonPath("$.valid").value(false))
+            .andExpect(jsonPath("$.message").value("Token has been invalidated by logout"));
 
         mockMvc.perform(post("/auth/refresh")
                 .with(csrf())
@@ -233,8 +233,8 @@ class AuthServiceIntegrationTest {
                       "refreshToken": "%s"
                     }
                     """.formatted(rotatedRefreshToken)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.user.email").value("tester@example.com"));
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.message").value("Refresh token has been invalidated by logout"));
     }
 
     @Test

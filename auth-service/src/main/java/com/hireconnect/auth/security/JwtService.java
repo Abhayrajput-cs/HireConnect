@@ -64,6 +64,10 @@ public class JwtService {
         return parseClaims(token).getExpiration().toInstant();
     }
 
+    public Instant extractIssuedAt(String token) {
+        return parseClaims(token).getIssuedAt().toInstant();
+    }
+
     public String extractEmail(String token) {
         return parseClaims(token).getSubject();
     }
@@ -78,6 +82,14 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException ex) {
             return null;
         }
+    }
+
+    public boolean isTokenIssuedBefore(String token, Instant cutoff) {
+        if (cutoff == null) {
+            return false;
+        }
+        Instant issuedAt = extractIssuedAt(token);
+        return !issuedAt.isAfter(cutoff);
     }
 
     private String buildToken(UserCredential user, long ttlSeconds, String tokenType) {

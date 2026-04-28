@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Manage Users</title></head>
+<body>
+<h1>Manage Users</h1>
+<table border="1">
+    <thead><tr><th>Profile Id</th><th>Email</th><th>Role</th><th>Status</th><th>Reason</th><th>Action</th></tr></thead>
+    <tbody>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.profileId()}"></td>
+        <td th:text="${user.email()}"></td>
+        <td th:text="${user.role()}"></td>
+        <td th:text="${suspendedUsers.containsKey(user.profileId()) ? 'SUSPENDED' : 'ACTIVE'}"></td>
+        <td th:text="${suspendedUsers.containsKey(user.profileId()) ? suspendedUsers.get(user.profileId()).reason : '-'}"></td>
+        <td>
+            <form th:action="@{'/admin/users/' + ${user.profileId()} + '/suspend'}" method="post">
+                <input name="reason" placeholder="Reason">
+                <button type="submit">Suspend</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

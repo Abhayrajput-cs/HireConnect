@@ -30,7 +30,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.hireconnect.job.client.RecruiterDirectoryClient;
 import com.hireconnect.job.client.RecruiterProfileSnapshot;
 import com.hireconnect.job.exception.ApiException;
+import com.hireconnect.job.security.AuthValidationClient;
+import com.hireconnect.job.security.AuthenticatedUser;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -135,12 +138,36 @@ class JobSecurityIntegrationTest {
 
         @Bean
         @Primary
-        RecruiterDirectoryClient recruiterDirectoryClient() {
-            return profileId -> {
-                if (profileId == 101) {
-                    return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+        AuthValidationClient authValidationClient() {
+            return new AuthValidationClient("http://localhost:8081") {
+                @Override
+                public AuthenticatedUser validateAccessToken(String token) {
+                    Claims claims = Jwts.parser()
+                        .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(JWT_SECRET)))
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+                    return new AuthenticatedUser(claims.getSubject(), claims.get("role", String.class));
                 }
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
+            };
+        }
+
+        @Bean
+        @Primary
+        RecruiterDirectoryClient recruiterDirectoryClient() {
+            return new RecruiterDirectoryClient() {
+                @Override
+                public RecruiterProfileSnapshot getRecruiterProfile(Integer profileId) {
+                    if (profileId == 101) {
+                        return new RecruiterProfileSnapshot(101, "RECRUITER", "Priya Verma", "priya@hireco.com");
+                    }
+                    throw new ApiException(HttpStatus.BAD_REQUEST, "Recruiter profile not found with id: " + profileId);
+                }
+
+                @Override
+                public java.util.List<RecruiterProfileSnapshot> getProfilesByRole(String role) {
+                    return java.util.List.of();
+                }
             };
         }
     }

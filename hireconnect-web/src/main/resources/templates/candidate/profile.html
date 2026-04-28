@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Candidate Profile</title></head>
+<body>
+<h1>Candidate Profile</h1>
+<p><a href="/candidate/jobs">Jobs</a> | <a href="/candidate/applications">Applications</a> | <a href="/candidate/interviews">Interviews</a> | <a href="/candidate/notifications">Notifications</a></p>
+<form action="/logout" method="post"><button type="submit">Logout</button></form>
+<form th:action="@{/candidate/profile}" th:object="${profileForm}" method="post">
+    <label>Full Name <input th:field="*{fullName}"></label><br>
+    <label>Email <input th:field="*{email}" readonly></label><br>
+    <label>Mobile <input th:field="*{mobile}"></label><br>
+    <label>DOB <input type="date" th:field="*{dob}"></label><br>
+    <label>Gender <input th:field="*{gender}"></label><br>
+    <label>Skills <input th:field="*{skills}" placeholder="Java, Spring Boot"></label><br>
+    <label>Experience <input type="number" th:field="*{experience}"></label><br>
+    <label>Resume URL <input th:field="*{resumeUrl}"></label><br>
+    <label>House No <input th:field="*{houseNo}"></label><br>
+    <label>Street <input th:field="*{street}"></label><br>
+    <label>City <input th:field="*{city}"></label><br>
+    <label>State <input th:field="*{state}"></label><br>
+    <label>Pincode <input th:field="*{pincode}"></label><br>
+    <button type="submit">Save Profile</button>
+</form>
+</body>
+</html>

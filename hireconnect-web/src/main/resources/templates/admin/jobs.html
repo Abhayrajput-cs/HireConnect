@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>All Jobs</title></head>
+<body>
+<h1>All Jobs</h1>
+<table border="1">
+    <thead><tr><th>Id</th><th>Title</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+    <tr th:each="job : ${jobs}">
+        <td th:text="${job.jobId()}"></td>
+        <td th:text="${job.title()}"></td>
+        <td th:text="${job.status()}"></td>
+        <td>
+            <form th:action="@{'/admin/jobs/' + ${job.jobId()} + '/delete'}" method="post">
+                <button type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

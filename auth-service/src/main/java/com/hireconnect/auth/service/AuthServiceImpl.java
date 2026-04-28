@@ -81,10 +81,23 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public void logout(String token) {
-        if (StringUtils.hasText(token) && jwtService.safeParseClaims(token) == null) {
+        if (!StringUtils.hasText(token)) {
+            return;
+        }
+
+        var claims = jwtService.safeParseClaims(token);
+        if (claims == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Token is invalid");
         }
+
+        Integer userId = claims.get("uid", Integer.class);
+        UserCredential user = authRepository.findByUserId(userId)
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User account not found"));
+
+        user.setTokensInvalidBefore(Instant.now());
+        authRepository.save(user);
     }
 
     @Override
@@ -99,6 +112,10 @@ public class AuthServiceImpl implements AuthService {
         UserCredential user = authRepository.findByUserId(userId).orElse(null);
         if (user == null) {
             return new TokenValidationResponse(false, null, null, null, null, null, "User account no longer exists");
+        }
+
+        if (jwtService.isTokenIssuedBefore(request.token(), user.getTokensInvalidBefore())) {
+            return new TokenValidationResponse(false, null, null, null, null, null, "Token has been invalidated by logout");
         }
 
         return new TokenValidationResponse(
@@ -123,6 +140,10 @@ public class AuthServiceImpl implements AuthService {
         Integer userId = claims.get("uid", Integer.class);
         UserCredential user = authRepository.findByUserId(userId)
             .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User account not found"));
+
+        if (jwtService.isTokenIssuedBefore(token, user.getTokensInvalidBefore())) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token has been invalidated by logout");
+        }
 
         return issueTokens(user);
     }

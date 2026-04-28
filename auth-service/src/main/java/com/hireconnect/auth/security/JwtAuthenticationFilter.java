@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.hireconnect.auth.domain.UserCredential;
+import com.hireconnect.auth.repository.AuthRepository;
+
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,13 +25,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final AuthRepository authRepository;
 
     public JwtAuthenticationFilter(
         JwtService jwtService,
-        CustomUserDetailsService userDetailsService
+        CustomUserDetailsService userDetailsService,
+        AuthRepository authRepository
     ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.authRepository = authRepository;
     }
 
     @Override
@@ -46,6 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
         Claims claims = jwtService.safeParseClaims(token);
         if (claims == null || !"access".equals(claims.get("token_type", String.class))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        Integer userId = claims.get("uid", Integer.class);
+        UserCredential user = userId == null ? null : authRepository.findByUserId(userId).orElse(null);
+        if (user == null || jwtService.isTokenIssuedBefore(token, user.getTokensInvalidBefore())) {
             filterChain.doFilter(request, response);
             return;
         }

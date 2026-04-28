@@ -41,6 +41,7 @@ public class SecurityConfig {
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/profiles/resumes/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/profiles/**").authenticated()
                 .requestMatchers("/api/v1/profiles/**").authenticated()
                 .anyRequest().authenticated()

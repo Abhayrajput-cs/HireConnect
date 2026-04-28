@@ -31,11 +31,15 @@ class ApiGatewayServiceApplicationTests {
             "profile-service",
             "job-service-v1",
             "job-service-legacy",
-            "application-service",
-            "interview-service",
-            "notification-service",
-            "subscription-service",
-            "analytics-service",
+            "application-service-v1",
+            "application-service-legacy",
+            "interview-service-v1",
+            "interview-service-legacy",
+            "notification-service-v1",
+            "notification-service-legacy",
+            "analytics-service-v1",
+            "analytics-service-legacy",
+            "hireconnect-web-root",
             "hireconnect-web"
         );
     }

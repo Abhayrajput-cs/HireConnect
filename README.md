@@ -8,4 +8,8 @@ Infrastructure services currently available:
 - `api-gateway-service`: central entry point for client requests
 - `auth-service`: authentication, JWT, and GitHub OAuth
 - `profile-service`: candidate and recruiter profile management
-- `job-service`: job posting, search, filtering, and recruiter-linked ownership
+- `job-service`: job posting and search lifecycle
+- `application-service`: job application submission and pipeline tracking
+- `interview-service`: interview scheduling and lifecycle management
+- `notification-service`: merged notification dispatch and analytics reporting with RabbitMQ event consumption
+- `hireconnect-web`: final MVC website controller layer integrating the backend services plus local wallet, bookmark, and admin support flows
