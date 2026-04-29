@@ -28,7 +28,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
           <app-stat-card icon="VR" label="View/apply ratio" [value]="summary()!.viewToApplyRatio.toFixed(2)" />
         </section>
 
-        <article class="card-shell content-card">
+        <article class="workspace-panel">
           <div class="page-header">
             <div>
               <span class="eyebrow">Top categories</span>
@@ -37,9 +37,14 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
           </div>
           <div class="surface-list">
             @for (entry of categories(); track entry.key) {
-              <article>
-                <h3>{{ entry.key }}</h3>
-                <p>{{ entry.value }} tracked events</p>
+              <article class="list-row">
+                <div class="job-market-card__top">
+                  <span class="soft-icon material-symbols-rounded">query_stats</span>
+                  <div>
+                    <h3>{{ entry.key }}</h3>
+                    <p>{{ entry.value }} tracked events</p>
+                  </div>
+                </div>
               </article>
             }
           </div>

@@ -10,22 +10,24 @@ import { JobService } from '../../../core/services/job.service';
 import { SessionService } from '../../../core/services/session.service';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusPillComponent } from '../../../shared/components/status-pill/status-pill.component';
 
 @Component({
   selector: 'app-candidate-jobs-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, CurrencyPipe, PageHeaderComponent, EmptyStateComponent, StatusPillComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, CurrencyPipe, EmptyStateComponent, StatusPillComponent],
   template: `
     <section class="page-section">
-      <app-page-header
-        eyebrow="Job marketplace"
-        title="Search roles that match your momentum"
-        description="Filtered directly against job-service search parameters exposed through the API Gateway."
-      />
+      <section class="workspace-hero">
+        <div class="workspace-hero__copy">
+          <span class="eyebrow">Job marketplace</span>
+          <h1>Search roles that match your momentum</h1>
+          <p class="muted">Discover opportunities that fit your skills, experience and goals. Filter below to find the right role for your next move.</p>
+        </div>
+        <span class="soft-icon material-symbols-rounded">travel_explore</span>
+      </section>
 
-      <section class="card-shell content-card">
+      <section class="workspace-panel">
         <form class="form-grid form-grid--wide" [formGroup]="filters" (ngSubmit)="loadJobs()">
           <div class="field-block">
             <label>Title</label>
@@ -57,8 +59,14 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
             <input type="number" formControlName="salaryMax" />
           </div>
           <div class="form-actions">
-            <button class="primary-button" type="submit">Search jobs</button>
-            <button class="ghost-button" type="button" (click)="resetFilters()">Reset</button>
+            <button class="primary-button" type="submit">
+              Search jobs
+              <span class="material-symbols-rounded">arrow_forward</span>
+            </button>
+            <button class="ghost-button" type="button" (click)="resetFilters()">
+              <span class="material-symbols-rounded">refresh</span>
+              Reset
+            </button>
           </div>
         </form>
       </section>
@@ -68,10 +76,11 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
       }
 
       @if (jobs().length) {
-        <section class="panel-grid">
+        <section class="job-card-grid">
           @for (job of jobs(); track job.jobId) {
-            <article class="card-shell content-card">
-              <div class="page-header">
+            <article class="workspace-panel job-market-card">
+              <div class="job-market-card__top">
+                <span class="company-mark">{{ companyMark(job.title) }}</span>
                 <div>
                   <span class="eyebrow">{{ job.category }}</span>
                   <h2>{{ job.title }}</h2>
@@ -171,5 +180,15 @@ export class CandidateJobsPageComponent {
   protected toggleBookmark(jobId: number): void {
     this.bookmarks.toggle(jobId);
     void this.analytics.recordJobView(jobId, { viewerId: this.session.user()?.userId }).subscribe();
+  }
+
+  protected companyMark(title: string): string {
+    return title
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 }

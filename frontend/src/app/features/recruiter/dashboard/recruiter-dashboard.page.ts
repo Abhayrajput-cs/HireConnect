@@ -9,22 +9,25 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { JobService } from '../../../core/services/job.service';
 import { ViewerProfileService } from '../../../core/services/viewer-profile.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 
 @Component({
   selector: 'app-recruiter-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, EmptyStateComponent, PageHeaderComponent, StatCardComponent],
+  imports: [CommonModule, RouterLink, EmptyStateComponent, StatCardComponent],
   template: `
     <section class="page-section">
-      <app-page-header
-        eyebrow="Recruiter dashboard"
-        title="Run your hiring pipeline with confidence"
-        description="See open jobs, application volume, pipeline quality, and unread activity in one command center."
-        actionLabel="Post a new job"
-        actionLink="/recruiter/jobs/new"
-      />
+      <section class="workspace-hero">
+        <div class="workspace-hero__copy">
+          <span class="eyebrow">Recruiter dashboard</span>
+          <h1>Run your hiring pipeline with confidence</h1>
+          <p class="muted">See open jobs, application volume, pipeline quality, and unread activity in one command center.</p>
+        </div>
+        <a class="primary-button" routerLink="/recruiter/jobs/new">
+          Post a new job
+          <span class="material-symbols-rounded">arrow_forward</span>
+        </a>
+      </section>
 
       @if (!hasProfile()) {
         <app-empty-state
@@ -43,7 +46,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
         </section>
 
         <section class="grid-two">
-          <article class="card-shell content-card">
+          <article class="workspace-panel">
             <div class="page-header">
               <div>
                 <span class="eyebrow">Quick actions</span>
@@ -69,7 +72,7 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
             </div>
           </article>
 
-          <article class="card-shell content-card">
+          <article class="workspace-panel">
             <div class="page-header">
               <div>
                 <span class="eyebrow">Current pulse</span>
@@ -80,9 +83,14 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
             @if (latestJobs().length) {
               <div class="surface-list">
                 @for (job of latestJobs(); track job.jobId) {
-                  <article>
-                    <h3>{{ job.title }}</h3>
-                    <p>{{ job.location }} | {{ job.status }}</p>
+                  <article class="list-row">
+                    <div class="job-market-card__top">
+                      <span class="company-mark">{{ companyMark(job.title) }}</span>
+                      <div>
+                        <h3>{{ job.title }}</h3>
+                        <p>{{ job.location }} | {{ job.status }}</p>
+                      </div>
+                    </div>
                     <a class="ghost-button" [routerLink]="['/recruiter/jobs', job.jobId, 'applicants']">View applicants</a>
                   </article>
                 }
@@ -158,5 +166,15 @@ export class RecruiterDashboardPageComponent {
         });
       });
     });
+  }
+
+  protected companyMark(title: string): string {
+    return title
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 }

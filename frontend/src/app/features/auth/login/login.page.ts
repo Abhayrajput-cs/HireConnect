@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { ROLE_LABELS } from '../../../core/constants/role.constants';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
@@ -59,7 +60,7 @@ import { ToastService } from '../../../core/services/toast.service';
 
           <div class="form-actions">
             <button class="primary-button" type="submit" [disabled]="form.invalid || submitting()">
-              {{ submitting() ? 'Signing in...' : 'Login' }}
+              {{ submitting() ? 'Signing in...' : 'Sign in' }}
             </button>
             <a class="ghost-button" routerLink="/register">Create account</a>
           </div>
@@ -109,7 +110,9 @@ export class LoginPageComponent {
 
     this.errorMessage.set('');
     this.submitting.set(true);
-    this.auth.login(this.form.getRawValue()).subscribe({
+    this.auth.login(this.form.getRawValue()).pipe(
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
       next: (response) => {
         this.toast.success('Welcome back', `Signed in as ${response.user.email}`);
         this.auth.redirectToRoleHome(response.user.role);
@@ -118,7 +121,6 @@ export class LoginPageComponent {
         this.errorMessage.set(getErrorMessage(error, 'Unable to sign in.'));
         this.toast.error('Login failed', this.errorMessage());
       },
-      complete: () => this.submitting.set(false),
     });
   }
 }

@@ -48,4 +48,12 @@ export class ApplicationService {
   withdraw(applicationId: number): Observable<ApplicationResponse> {
     return this.http.patch<ApplicationResponse>(`${API_ENDPOINTS.applications}/${applicationId}/withdraw`, {});
   }
+
+  acceptOffer(applicationId: number): Observable<ApplicationResponse> {
+    return this.http.patch<ApplicationResponse>(`${API_ENDPOINTS.applications}/${applicationId}/offer/accept`, {});
+  }
+
+  declineOffer(applicationId: number): Observable<ApplicationResponse> {
+    return this.http.patch<ApplicationResponse>(`${API_ENDPOINTS.applications}/${applicationId}/offer/decline`, {});
+  }
 }

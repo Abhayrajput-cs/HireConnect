@@ -32,6 +32,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private static final String SHORTLISTED = "SHORTLISTED";
     private static final String INTERVIEW_SCHEDULED = "INTERVIEW_SCHEDULED";
     private static final String OFFERED = "OFFERED";
+    private static final String OFFER_ACCEPTED = "OFFER_ACCEPTED";
+    private static final String OFFER_DECLINED = "OFFER_DECLINED";
     private static final String REJECTED = "REJECTED";
     private static final String WITHDRAWN = "WITHDRAWN";
     private static final Set<String> VALID_STATUSES = Set.of(
@@ -39,6 +41,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         SHORTLISTED,
         INTERVIEW_SCHEDULED,
         OFFERED,
+        OFFER_ACCEPTED,
+        OFFER_DECLINED,
         REJECTED,
         WITHDRAWN
     );
@@ -173,6 +177,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    public ApplicationResponse acceptOffer(Integer applicationId) {
+        return respondToOffer(applicationId, ApplicationStatus.OFFER_ACCEPTED);
+    }
+
+    @Override
+    public ApplicationResponse declineOffer(Integer applicationId) {
+        return respondToOffer(applicationId, ApplicationStatus.OFFER_DECLINED);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public int countByJob(Integer jobId) {
         validateJob(jobCatalogClient.getJob(jobId), jobId);
@@ -291,12 +305,32 @@ public class ApplicationServiceImpl implements ApplicationService {
         );
     }
 
+    private ApplicationResponse respondToOffer(Integer applicationId, ApplicationStatus nextStatus) {
+        Application application = getRequiredApplication(applicationId);
+        CandidateProfileSnapshot candidateProfile = candidateDirectoryClient.getCandidateProfile(application.getCandidateId());
+        validateCandidate(candidateProfile, application.getCandidateId());
+        ensureAuthenticatedCandidateOwnsProfile(candidateProfile);
+
+        ApplicationStatus currentStatus = ApplicationStatus.from(application.getStatus());
+        if (currentStatus != ApplicationStatus.OFFERED) {
+            throw new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "Only offered applications can be accepted or declined"
+            );
+        }
+
+        application.setStatus(nextStatus.name());
+        return toResponse(applicationRepository.save(application));
+    }
+
     private static Map<ApplicationStatus, Set<ApplicationStatus>> buildTransitions() {
         Map<ApplicationStatus, Set<ApplicationStatus>> transitions = new EnumMap<>(ApplicationStatus.class);
         transitions.put(ApplicationStatus.APPLIED, Set.of(ApplicationStatus.SHORTLISTED, ApplicationStatus.REJECTED));
         transitions.put(ApplicationStatus.SHORTLISTED, Set.of(ApplicationStatus.INTERVIEW_SCHEDULED, ApplicationStatus.REJECTED));
         transitions.put(ApplicationStatus.INTERVIEW_SCHEDULED, Set.of(ApplicationStatus.OFFERED, ApplicationStatus.REJECTED));
         transitions.put(ApplicationStatus.OFFERED, Set.of());
+        transitions.put(ApplicationStatus.OFFER_ACCEPTED, Set.of());
+        transitions.put(ApplicationStatus.OFFER_DECLINED, Set.of());
         transitions.put(ApplicationStatus.REJECTED, Set.of());
         transitions.put(ApplicationStatus.WITHDRAWN, Set.of());
         return transitions;
@@ -307,6 +341,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         SHORTLISTED,
         INTERVIEW_SCHEDULED,
         OFFERED,
+        OFFER_ACCEPTED,
+        OFFER_DECLINED,
         REJECTED,
         WITHDRAWN;
 

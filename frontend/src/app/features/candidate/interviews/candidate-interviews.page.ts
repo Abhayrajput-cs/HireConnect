@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin, of, switchMap } from 'rxjs';
 
 import { InterviewResponse } from '../../../core/models/interview.models';
@@ -17,7 +18,7 @@ type RescheduleForm = FormGroup;
 @Component({
   selector: 'app-candidate-interviews-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, EmptyStateComponent, PageHeaderComponent, StatusPillComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, EmptyStateComponent, PageHeaderComponent, StatusPillComponent],
   template: `
     <section class="page-section">
       <app-page-header
@@ -49,8 +50,12 @@ type RescheduleForm = FormGroup;
               </div>
 
               <div class="button-row">
+                <a class="primary-button" [routerLink]="['/candidate/interviews', interview.interviewId, 'join']">
+                  <span class="material-symbols-rounded">video_camera_front</span>
+                  Join interview
+                </a>
                 @if (interview.status === 'SCHEDULED') {
-                  <button class="primary-button" type="button" (click)="confirm(interview.interviewId)">Confirm</button>
+                  <button class="ghost-button" type="button" (click)="confirm(interview.interviewId)">Confirm</button>
                 }
                 <button class="ghost-button" type="button" (click)="toggleReschedule(interview.interviewId)">
                   {{ editingInterviewId() === interview.interviewId ? 'Hide reschedule form' : 'Request reschedule' }}

@@ -24,16 +24,24 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
         description="Read state is synced against the notification service, including bulk mark-as-read."
       />
 
-      <div class="button-row">
-        <button class="ghost-button" type="button" (click)="load()">Refresh</button>
-        <button class="primary-button" type="button" (click)="markAllRead()">Mark all alerts read</button>
+      <div class="button-row notification-toolbar">
+        <span class="chip">All {{ activity().length }}</span>
+        <span class="chip">Unread {{ unreadCount() }}</span>
+        <button class="ghost-button" type="button" (click)="load()">
+          <span class="material-symbols-rounded">refresh</span>
+          Refresh
+        </button>
+        <button class="primary-button" type="button" (click)="markAllRead()">
+          <span class="material-symbols-rounded">mark_email_read</span>
+          Mark all as read
+        </button>
       </div>
 
       @if (activity().length) {
         <div class="activity-feed">
           @for (item of activity(); track item.id) {
-            <article class="card-shell content-card activity-card">
-              <div class="page-header">
+            <article class="workspace-panel activity-card">
+              <div class="notification-row">
                 <div class="activity-card__meta">
                   <span class="activity-card__icon material-symbols-rounded">{{ iconFor(item.type) }}</span>
                   <div>
@@ -109,6 +117,10 @@ export class CandidateNotificationsPageComponent {
 
     this.activityFeed.markDerivedAsRead('candidate', this.profileId, item.id);
     this.load();
+  }
+
+  protected unreadCount(): number {
+    return this.activity().filter((item) => !item.isRead).length;
   }
 
   protected markAllRead(): void {

@@ -24,5 +24,9 @@ public interface ApplicationService {
 
     ApplicationResponse withdrawApplication(Integer applicationId);
 
+    ApplicationResponse acceptOffer(Integer applicationId);
+
+    ApplicationResponse declineOffer(Integer applicationId);
+
     int countByJob(Integer jobId);
 }

@@ -27,12 +27,15 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
       @if (jobs().length) {
         <div class="surface-list">
           @for (job of jobs(); track job.jobId) {
-            <article class="card-shell content-card">
-              <div class="page-header">
-                <div>
-                  <span class="eyebrow">{{ job.category }}</span>
-                  <h2>{{ job.title }}</h2>
-                  <p>{{ job.location }} | {{ job.postedAt | date:'mediumDate' }}</p>
+            <article class="workspace-panel">
+              <div class="notification-row">
+                <div class="job-market-card__top">
+                  <span class="company-mark">{{ companyMark(job.title) }}</span>
+                  <div>
+                    <span class="eyebrow">{{ job.category }}</span>
+                    <h2>{{ job.title }}</h2>
+                    <p>{{ job.location }} | {{ job.postedAt | date:'mediumDate' }}</p>
+                  </div>
                 </div>
                 <app-status-pill [label]="job.status" />
               </div>
@@ -87,6 +90,16 @@ export class RecruiterManageJobsPageComponent {
       this.toast.success('Hiring closed', 'The job remains visible to candidates but no longer accepts applications.');
       this.load();
     });
+  }
+
+  protected companyMark(title: string): string {
+    return title
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 
   private load(): void {

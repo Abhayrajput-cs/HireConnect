@@ -5,20 +5,22 @@ import { AnalyticsSummary } from '../../../core/models/analytics.models';
 import { AdminService } from '../../../core/services/admin.service';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 
 @Component({
   selector: 'app-admin-dashboard-page',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent, PageHeaderComponent, StatCardComponent],
+  imports: [CommonModule, EmptyStateComponent, StatCardComponent],
   template: `
     <section class="page-section">
-      <app-page-header
-        eyebrow="Admin dashboard"
-        title="Platform-level command center"
-        description="Read-only admin views are driven by the analytics and profile endpoints exposed by the backend."
-      />
+      <section class="workspace-hero">
+        <div class="workspace-hero__copy">
+          <span class="eyebrow">Admin dashboard</span>
+          <h1>Platform-level command center</h1>
+          <p class="muted">Monitor users, jobs, applications, and hiring outcomes across the HireConnect operating system.</p>
+        </div>
+        <span class="soft-icon material-symbols-rounded">admin_panel_settings</span>
+      </section>
 
       @if (analytics()) {
         <section class="stats-grid">

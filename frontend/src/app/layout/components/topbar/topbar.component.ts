@@ -14,15 +14,21 @@ import { UserMenuComponent } from '../user-menu/user-menu.component';
   imports: [CommonModule, RouterLink, UserMenuComponent, ThemeToggleComponent],
   template: `
     <header class="topbar">
-      <div>
-        <button type="button" class="ghost-button topbar__toggle" (click)="menuToggle.emit()">Menu</button>
+      <div class="topbar__title">
+        <button type="button" class="ghost-button topbar__toggle" (click)="menuToggle.emit()">
+          <span class="material-symbols-rounded">menu</span>
+        </button>
         <span class="eyebrow">HireConnect workspace</span>
         <h2>{{ title() }}</h2>
       </div>
 
       <div class="topbar__actions">
         <app-theme-toggle />
-        <a class="ghost-button" routerLink="/">Explore platform</a>
+        <a class="ghost-button" routerLink="/">
+          <span class="material-symbols-rounded">explore</span>
+          Explore platform
+          <span class="material-symbols-rounded">arrow_forward</span>
+        </a>
         <app-user-menu />
       </div>
     </header>

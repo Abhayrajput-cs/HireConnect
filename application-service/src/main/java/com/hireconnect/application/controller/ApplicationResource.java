@@ -86,4 +86,14 @@ public class ApplicationResource {
     public ResponseEntity<ApplicationResponse> withdraw(@PathVariable Integer applicationId) {
         return ResponseEntity.ok(applicationService.withdrawApplication(applicationId));
     }
+
+    @PatchMapping("/{applicationId}/offer/accept")
+    public ResponseEntity<ApplicationResponse> acceptOffer(@PathVariable Integer applicationId) {
+        return ResponseEntity.ok(applicationService.acceptOffer(applicationId));
+    }
+
+    @PatchMapping("/{applicationId}/offer/decline")
+    public ResponseEntity<ApplicationResponse> declineOffer(@PathVariable Integer applicationId) {
+        return ResponseEntity.ok(applicationService.declineOffer(applicationId));
+    }
 }
