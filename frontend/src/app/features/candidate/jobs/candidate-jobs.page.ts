@@ -80,7 +80,7 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
           @for (job of jobs(); track job.jobId) {
             <article class="workspace-panel job-market-card">
               <div class="job-market-card__top">
-                <span class="company-mark">{{ companyMark(job.companyName || job.title) }}</span>
+                <span class="company-mark">{{ companyMark(job.title) }}</span>
                 <div>
                   <span class="eyebrow">{{ job.category }}</span>
                   <h2>{{ job.title }}</h2>

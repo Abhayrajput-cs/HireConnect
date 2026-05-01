@@ -22,13 +22,17 @@ Central entry point for client requests in the HireConnect microservices platfor
 The gateway currently defines friendly entry routes for the planned microservices:
 
 - `/api/auth/**` -> `auth-service`
-- `/api/profiles/**` -> `profile-service`
-- `/api/jobs/**` -> `job-service`
-- `/api/applications/**` -> `application-service`
-- `/api/interviews/**` -> `interview-service`
-- `/api/notifications/**` -> `notification-service`
-- `/api/subscriptions/**` -> `subscription-service`
-- `/api/analytics/**` -> `analytics-service`
+- `/api/v1/profiles/**` -> `profile-service`
+- `/api/v1/jobs/**` -> `job-service`
+- `/api/jobs/**` -> `job-service` legacy alias to `/api/v1/jobs/**`
+- `/api/v1/applications/**` -> `application-service`
+- `/api/applications/**` -> `application-service` legacy alias to `/api/v1/applications/**`
+- `/api/v1/interviews/**` -> `interview-service`
+- `/api/interviews/**` -> `interview-service` legacy alias to `/api/v1/interviews/**`
+- `/api/v1/notifications/**` -> `notification-service`
+- `/api/notifications/**` -> `notification-service` legacy alias to `/api/v1/notifications/**`
+- `/api/v1/analytics/**` -> `notification-service` merged analytics endpoints
+- `/api/analytics/**` -> `notification-service` legacy alias to `/api/v1/analytics/**`
 - `/web/**` -> `hireconnect-web`
 
 ## Run
