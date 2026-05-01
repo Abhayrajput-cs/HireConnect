@@ -3,12 +3,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, finalize, map, of } from 'rxjs';
 
+import { COUNTRY_CODES, INDIA_CITIES_BY_STATE, INDIA_STATES } from '../../../core/constants/location.constants';
 import { ProfileResponse, RecruiterProfileRequest } from '../../../core/models/profile.models';
 import { ProfileService } from '../../../core/services/profile.service';
 import { SessionService } from '../../../core/services/session.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ViewerProfileService } from '../../../core/services/viewer-profile.service';
 import { getErrorMessage } from '../../../core/utils/http-error.util';
+import { indianMobileValidator } from '../../../core/validators/phone.validator';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 
 type AddressForm = FormGroup;
@@ -97,12 +99,6 @@ type AddressForm = FormGroup;
                 </div>
               </div>
 
-              <div class="profile-detail-grid">
-                <div class="profile-detail-item">
-                  <label>Date of birth</label>
-                  <strong>{{ existingProfile()!.dob || 'Not added' }}</strong>
-                </div>
-              </div>
             </article>
           </section>
 
@@ -156,9 +152,16 @@ type AddressForm = FormGroup;
               </div>
               <div class="field-block">
                 <label for="mobile">Mobile</label>
-                <input id="mobile" type="number" formControlName="mobile" />
+                <div class="phone-field">
+                  <select formControlName="countryCode" aria-label="Country code">
+                    @for (country of countryCodes; track country.code) {
+                      <option [value]="country.code">{{ country.code }} {{ country.label }}</option>
+                    }
+                  </select>
+                  <input id="mobile" inputmode="numeric" maxlength="10" formControlName="mobile" placeholder="9876543210" />
+                </div>
                 @if (showError('mobile')) {
-                  <small>Mobile must be a positive number when provided.</small>
+                  <small>Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.</small>
                 }
               </div>
               <div class="field-block">
@@ -182,10 +185,6 @@ type AddressForm = FormGroup;
               <div class="field-block">
                 <label for="website">Website</label>
                 <input id="website" formControlName="website" placeholder="https://..." />
-              </div>
-              <div class="field-block">
-                <label for="dob">Date of birth</label>
-                <input id="dob" type="date" formControlName="dob" />
               </div>
             </div>
 
@@ -212,11 +211,21 @@ type AddressForm = FormGroup;
                       </div>
                       <div class="field-block">
                         <label>City</label>
-                        <input formControlName="city" />
+                        <select formControlName="city">
+                          <option value="">Select city</option>
+                          @for (city of citiesFor($index); track city) {
+                            <option [value]="city">{{ city }}</option>
+                          }
+                        </select>
                       </div>
                       <div class="field-block">
                         <label>State</label>
-                        <input formControlName="state" />
+                        <select formControlName="state" (change)="onStateChange($index)">
+                          <option value="">Select state</option>
+                          @for (state of states; track state) {
+                            <option [value]="state">{{ state }}</option>
+                          }
+                        </select>
                       </div>
                       <div class="field-block">
                         <label>Pincode</label>
@@ -264,12 +273,14 @@ export class RecruiterProfilePageComponent {
   protected readonly errorMessage = signal('');
   protected readonly submitted = signal(false);
   protected readonly userEmail = computed(() => this.session.user()?.email ?? '');
+  protected readonly countryCodes = COUNTRY_CODES;
+  protected readonly states = INDIA_STATES;
 
   protected readonly form = this.fb.nonNullable.group({
     fullName: ['', [Validators.required]],
     email: [this.userEmail(), [Validators.required, Validators.email]],
-    mobile: [0, [Validators.min(0)]],
-    dob: [''],
+    countryCode: ['+91'],
+    mobile: ['', [indianMobileValidator()]],
     companyName: ['', [Validators.required]],
     companySize: [''],
     industry: ['', [Validators.required]],
@@ -319,7 +330,7 @@ export class RecruiterProfilePageComponent {
       fullName: this.form.controls.fullName.getRawValue(),
       email: this.form.controls.email.getRawValue(),
       mobile: Number(this.form.controls.mobile.getRawValue()) || null,
-      dob: this.nullable(this.form.controls.dob.getRawValue()),
+      dob: null,
       companyName: this.form.controls.companyName.getRawValue(),
       companySize: this.nullable(this.form.controls.companySize.getRawValue()),
       industry: this.form.controls.industry.getRawValue(),
@@ -396,8 +407,8 @@ export class RecruiterProfilePageComponent {
     this.form.patchValue({
       fullName: profile.fullName ?? '',
       email: profile.email ?? this.userEmail(),
-      mobile: Number(profile.mobile ?? 0),
-      dob: profile.dob ?? '',
+      countryCode: '+91',
+      mobile: profile.mobile ? String(profile.mobile) : '',
       companyName: profile.companyName ?? '',
       companySize: profile.companySize ?? '',
       industry: profile.industry ?? '',
@@ -436,6 +447,20 @@ export class RecruiterProfilePageComponent {
       state: [address?.state ?? '', [Validators.required]],
       pincode: [Number(address?.pincode ?? 0), [Validators.required, Validators.min(100000), Validators.max(999999)]],
     });
+  }
+
+  protected citiesFor(index: number): string[] {
+    const state = String(this.addresses.at(index)?.get('state')?.value ?? '');
+    return INDIA_CITIES_BY_STATE[state] ?? [];
+  }
+
+  protected onStateChange(index: number): void {
+    const group = this.addresses.at(index);
+    const cityControl = group?.get('city');
+    const cities = this.citiesFor(index);
+    if (cityControl && !cities.includes(String(cityControl.value ?? ''))) {
+      cityControl.setValue('');
+    }
   }
 
   private nullable(value: string): string | null {

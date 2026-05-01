@@ -25,6 +25,7 @@ export interface JobResponse {
   skills: string[];
   experienceRequired: number;
   postedBy: number;
+  companyName?: string | null;
   status: string;
   postedAt: string;
 }

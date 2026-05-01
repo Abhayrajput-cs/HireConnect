@@ -27,7 +27,7 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
         <app-page-header
           eyebrow="Job detail"
           [title]="job()!.title"
-          [description]="job()!.category + ' | ' + job()!.location + ' | ' + job()!.type"
+          [description]="(job()!.companyName || 'Company not added') + ' | ' + job()!.category + ' | ' + job()!.location + ' | ' + job()!.type"
           actionLabel="Back to jobs"
           actionLink="/candidate/jobs"
         />
@@ -38,6 +38,7 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
               <div>
                 <span class="eyebrow">{{ job()!.category }}</span>
                 <h2>{{ job()!.title }}</h2>
+                <p>{{ job()!.companyName || 'Company not added' }}</p>
               </div>
               <app-status-pill [label]="job()!.status" />
             </div>

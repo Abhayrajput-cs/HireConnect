@@ -22,12 +22,15 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
       @if (jobs().length) {
         <div class="surface-list">
           @for (job of jobs(); track job.jobId) {
-            <article class="card-shell content-card">
-              <div class="page-header">
-                <div>
-                  <span class="eyebrow">{{ job.category }}</span>
-                  <h2>{{ job.title }}</h2>
-                  <p>{{ job.location }} | Recruiter profile {{ job.postedBy }}</p>
+            <article class="workspace-panel">
+              <div class="notification-row">
+                <div class="job-market-card__top">
+                  <span class="company-mark">{{ companyMark(job.title) }}</span>
+                  <div>
+                    <span class="eyebrow">{{ job.category }}</span>
+                    <h2>{{ job.title }}</h2>
+                    <p>{{ job.location }} | Recruiter profile {{ job.postedBy }}</p>
+                  </div>
                 </div>
                 <app-status-pill [label]="job.status" />
               </div>
@@ -46,5 +49,15 @@ export class AdminJobsPageComponent {
 
   constructor() {
     this.jobsService.getJobs().subscribe((jobs) => this.jobs.set(jobs));
+  }
+
+  protected companyMark(title: string): string {
+    return title
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 }

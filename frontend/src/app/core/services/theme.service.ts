@@ -3,12 +3,12 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 type AppTheme = 'light' | 'dark';
 
-const THEME_KEY = 'hireconnect.theme';
+const THEME_KEY = 'hireconnect.theme.v2';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
-  private readonly themeSignal = signal<AppTheme>('light');
+  private readonly themeSignal = signal<AppTheme>('dark');
 
   readonly theme = computed(() => this.themeSignal());
   readonly isDark = computed(() => this.themeSignal() === 'dark');
@@ -26,7 +26,7 @@ export class ThemeService {
       && typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    this.setTheme(prefersDark ? 'dark' : 'light', false);
+    this.setTheme(prefersDark ? 'dark' : 'dark', false);
   }
 
   toggle(): void {

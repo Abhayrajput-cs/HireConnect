@@ -15,6 +15,7 @@ public record JobResponse(
     List<String> skills,
     Integer experienceRequired,
     Integer postedBy,
+    String companyName,
     String status,
     LocalDate postedAt
 ) {

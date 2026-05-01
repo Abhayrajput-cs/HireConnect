@@ -35,7 +35,6 @@ interface JobMetricView {
           <app-stat-card icon="JB" label="Total jobs" [value]="summary()!.totalJobs" />
           <app-stat-card icon="AP" label="Applications" [value]="summary()!.totalApplications" />
           <app-stat-card icon="SL" label="Shortlisted" [value]="summary()!.shortlistedCount" />
-          <app-stat-card icon="TT" label="Avg time to hire" [value]="timeToHireLabel()" />
         </section>
 
         <section class="grid-two">
@@ -102,7 +101,6 @@ export class RecruiterAnalyticsPageComponent {
   private readonly applications = inject(ApplicationService);
 
   protected readonly summary = signal<AnalyticsSummary | null>(null);
-  protected readonly timeToHireLabel = signal('0 days');
   protected readonly jobMetrics = signal<JobMetricView[]>([]);
   protected readonly topCategories = signal<{ key: string; value: number }[]>([]);
 
@@ -121,7 +119,6 @@ export class RecruiterAnalyticsPageComponent {
 
       forkJoin({
         jobs: this.jobs.getJobsByRecruiter(profile.profileId).pipe(catchError(() => of([]))),
-        timeToHire: this.analytics.getTimeToHire(profile.profileId).pipe(catchError(() => of(0))),
       }).pipe(
         switchMap((result) => {
           const categories = result.jobs.reduce<Record<string, number>>((acc, job) => {
@@ -142,7 +139,6 @@ export class RecruiterAnalyticsPageComponent {
               } satisfies AnalyticsSummary,
               metrics: [] as JobMetricView[],
               topCategories: categories,
-              timeToHire: result.timeToHire,
             });
           }
 
@@ -184,7 +180,7 @@ export class RecruiterAnalyticsPageComponent {
                   shortlistedCount,
                   offeredCount,
                   rejectedCount,
-                  avgTimeToHireDays: result.timeToHire,
+                  avgTimeToHireDays: 0,
                   viewToApplyRatio: totalApplications ? totalViews / totalApplications : 0,
                 } satisfies AnalyticsSummary,
                 metrics: metrics.map((metric) => ({
@@ -194,14 +190,12 @@ export class RecruiterAnalyticsPageComponent {
                   ratio: metric.ratio,
                 })),
                 topCategories: categories,
-                timeToHire: result.timeToHire,
               };
             }),
           );
         }),
       ).subscribe((result) => {
         this.summary.set(result.summary);
-        this.timeToHireLabel.set(`${result.timeToHire.toFixed(1)} days`);
         this.jobMetrics.set(result.metrics);
         this.topCategories.set(Object.entries(result.topCategories).map(([key, value]) => ({ key, value })));
       });

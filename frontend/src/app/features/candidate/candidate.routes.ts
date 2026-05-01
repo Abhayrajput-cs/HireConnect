@@ -7,6 +7,7 @@ export const CANDIDATE_ROUTES: Routes = [
   { path: 'jobs/:jobId', loadComponent: () => import('./job-detail/candidate-job-detail.page').then((m) => m.CandidateJobDetailPageComponent) },
   { path: 'applications', loadComponent: () => import('./applications/candidate-applications.page').then((m) => m.CandidateApplicationsPageComponent) },
   { path: 'interviews', loadComponent: () => import('./interviews/candidate-interviews.page').then((m) => m.CandidateInterviewsPageComponent) },
+  { path: 'interviews/:interviewId/join', loadComponent: () => import('../interviews/interview-room/interview-room.page').then((m) => m.InterviewRoomPageComponent) },
   { path: 'notifications', loadComponent: () => import('./notifications/candidate-notifications.page').then((m) => m.CandidateNotificationsPageComponent) },
   { path: 'bookmarks', loadComponent: () => import('./bookmarks/candidate-bookmarks.page').then((m) => m.CandidateBookmarksPageComponent) },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

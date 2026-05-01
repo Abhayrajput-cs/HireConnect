@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { forkJoin, of, switchMap } from 'rxjs';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ApplicationResponse } from '../../../core/models/application.models';
+import { InterviewResponse } from '../../../core/models/interview.models';
 import { ProfileResponse } from '../../../core/models/profile.models';
 import { ApplicationService } from '../../../core/services/application.service';
 import { InterviewService } from '../../../core/services/interview.service';
@@ -19,6 +20,7 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
 interface ApplicantView {
   application: ApplicationResponse;
   candidate: ProfileResponse | null;
+  interviews: InterviewResponse[];
 }
 
 type ScheduleForm = FormGroup;
@@ -26,7 +28,7 @@ type ScheduleForm = FormGroup;
 @Component({
   selector: 'app-recruiter-applicants-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, EmptyStateComponent, PageHeaderComponent, StatusPillComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, EmptyStateComponent, PageHeaderComponent, StatusPillComponent],
   template: `
     <section class="page-section">
       <app-page-header
@@ -48,6 +50,99 @@ type ScheduleForm = FormGroup;
                 <app-status-pill [label]="item.application.status" />
               </div>
               <p class="muted">{{ item.application.coverLetter || 'No cover letter submitted.' }}</p>
+
+              <section class="applicant-profile-panel">
+                <div class="applicant-profile-panel__head">
+                  <span class="material-symbols-rounded">account_box</span>
+                  <div>
+                    <h3>Candidate profile</h3>
+                    <p>Read-only profile details submitted by the applicant.</p>
+                  </div>
+                </div>
+
+                @if (item.candidate) {
+                  <div class="applicant-profile-grid">
+                    <div>
+                      <label>Full name</label>
+                      <strong>{{ item.candidate.fullName }}</strong>
+                    </div>
+                    <div>
+                      <label>Email</label>
+                      <strong>{{ item.candidate.email }}</strong>
+                    </div>
+                    <div>
+                      <label>Mobile</label>
+                      <strong>{{ item.candidate.mobile || 'Not added' }}</strong>
+                    </div>
+                    <div>
+                      <label>Experience</label>
+                      <strong>{{ item.candidate.experience || 0 }} years</strong>
+                    </div>
+                    <div>
+                      <label>Gender</label>
+                      <strong>{{ formatLabel(item.candidate.gender) }}</strong>
+                    </div>
+                    <div>
+                      <label>Date of birth</label>
+                      <strong>{{ item.candidate.dob ? (item.candidate.dob | date:'mediumDate') : 'Not added' }}</strong>
+                    </div>
+                    <div class="applicant-profile-grid__wide">
+                      <label>Location</label>
+                      <strong>{{ locationSummary(item.candidate) }}</strong>
+                    </div>
+                    <div class="applicant-profile-grid__wide">
+                      <label>Skills</label>
+                      <div class="chip-group">
+                        @for (skill of item.candidate.skills; track skill) {
+                          <span class="chip">{{ skill }}</span>
+                        } @empty {
+                          <span class="chip">No skills added</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <p class="muted">Candidate profile could not be loaded right now.</p>
+                }
+
+                <div class="button-row">
+                  @if (resumeUrl(item)) {
+                    <a class="primary-button" [href]="resumeUrl(item)" target="_blank" rel="noreferrer">
+                      <span class="material-symbols-rounded">description</span>
+                      View resume
+                    </a>
+                  } @else {
+                    <button class="ghost-button" type="button" disabled>No resume available</button>
+                  }
+                </div>
+              </section>
+
+              @if (item.interviews.length) {
+                <section class="interview-summary-panel">
+                  <div class="applicant-profile-panel__head">
+                    <span class="material-symbols-rounded">video_camera_front</span>
+                    <div>
+                      <h3>Interview slots</h3>
+                      <p>Scheduled interview rooms for this applicant.</p>
+                    </div>
+                  </div>
+                  <div class="interview-summary-list">
+                    @for (interview of item.interviews; track interview.interviewId) {
+                      <article>
+                        <div>
+                          <span class="eyebrow">Interview {{ interview.interviewId }}</span>
+                          <strong>{{ interview.mode }} interview</strong>
+                          <p>{{ interview.scheduledAt | date:'medium' }}</p>
+                          <small>{{ interview.location || interview.meetLink || 'Details pending' }}</small>
+                        </div>
+                        <app-status-pill [label]="interview.status" />
+                        <a class="primary-button" [routerLink]="['/recruiter/interviews', interview.interviewId, 'join']">Join room</a>
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
+
               <div class="button-row">
                 @if (canMoveTo(item.application.status, 'SHORTLISTED')) {
                   <button class="ghost-button" type="button" (click)="updateStatus(item.application.applicationId, 'SHORTLISTED')">Shortlist</button>
@@ -60,7 +155,7 @@ type ScheduleForm = FormGroup;
                 }
               </div>
 
-              @if (canScheduleInterview(item.application.status)) {
+              @if (canScheduleInterview(item)) {
                 <form class="stack" [formGroup]="scheduleForms()[item.application.applicationId]" (ngSubmit)="schedule(item.application.applicationId)">
                   <div class="form-grid form-grid--wide">
                     <div class="field-block">
@@ -103,8 +198,8 @@ type ScheduleForm = FormGroup;
               } @else {
                 <div class="surface-list">
                   <article>
-                    <h3>Interview scheduling locked</h3>
-                    <p>Interviews can only be scheduled when an application is in SHORTLISTED or INTERVIEW_SCHEDULED state.</p>
+                    <h3>{{ item.interviews.length ? 'Interview already scheduled' : 'Interview scheduling locked' }}</h3>
+                    <p>{{ item.interviews.length ? 'Use the interview slots panel above to open the join room.' : 'Shortlist this application before scheduling an interview.' }}</p>
                   </article>
                 </div>
               }
@@ -201,8 +296,8 @@ export class RecruiterApplicantsPageComponent {
     return this.allowedTransitions(currentStatus).includes(targetStatus);
   }
 
-  protected canScheduleInterview(status: string): boolean {
-    return status === 'SHORTLISTED' || status === 'INTERVIEW_SCHEDULED';
+  protected canScheduleInterview(item: ApplicantView): boolean {
+    return item.application.status === 'SHORTLISTED' && item.interviews.length === 0;
   }
 
   protected showFieldError(applicationId: number, fieldName: 'meetLink' | 'location'): boolean {
@@ -251,15 +346,19 @@ export class RecruiterApplicantsPageComponent {
         if (!applications.length) {
           return of([] as ApplicantView[]);
         }
-        const uniqueCandidateIds = [...new Set(applications.map((application) => application.candidateId))];
-        return forkJoin(uniqueCandidateIds.map((candidateId) => this.profiles.getProfileById(candidateId))).pipe(
-          switchMap((profiles) => {
-            const profilesById = new Map<number, ProfileResponse>(profiles.map((profile) => [profile.profileId, profile]));
-            return of(applications.map((application) => ({
+        return forkJoin(applications.map((application) =>
+          forkJoin({
+            candidate: this.profiles.getProfileById(application.candidateId).pipe(catchError(() => of(null))),
+            interviews: this.interviews.getByApplication(application.applicationId).pipe(catchError(() => of([] as InterviewResponse[]))),
+          }).pipe(
+            map(({ candidate, interviews }) => ({
               application,
-              candidate: profilesById.get(application.candidateId) ?? null,
-            })));
-          }),
+              candidate,
+              interviews,
+            })),
+          ),
+        )).pipe(
+          map((items) => items as ApplicantView[]),
         );
       }),
     ).subscribe((applicants) => {
@@ -291,5 +390,26 @@ export class RecruiterApplicantsPageComponent {
       default:
         return [];
     }
+  }
+
+  protected resumeUrl(item: ApplicantView): string | null {
+    return item.application.resumeUrl || item.candidate?.resumeUrl || null;
+  }
+
+  protected locationSummary(candidate: ProfileResponse): string {
+    const address = candidate.addresses?.[0];
+    if (!address) {
+      return 'Not added';
+    }
+    return [address.houseNo, address.street, address.city, address.state, address.pincode]
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  protected formatLabel(value: string | null): string {
+    if (!value) {
+      return 'Not added';
+    }
+    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   }
 }

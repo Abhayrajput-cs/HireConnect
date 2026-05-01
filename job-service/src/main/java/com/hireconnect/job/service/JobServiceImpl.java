@@ -317,8 +317,24 @@ public class JobServiceImpl implements JobService {
             List.copyOf(job.getSkills()),
             job.getExperienceRequired(),
             job.getPostedBy(),
+            resolveCompanyName(job.getPostedBy()),
             job.getStatus(),
             job.getPostedAt()
         );
+    }
+
+    private String resolveCompanyName(Integer postedBy) {
+        try {
+            RecruiterProfileSnapshot recruiterProfile = recruiterDirectoryClient.getRecruiterProfile(postedBy);
+            if (recruiterProfile != null && recruiterProfile.companyName() != null && !recruiterProfile.companyName().isBlank()) {
+                return recruiterProfile.companyName();
+            }
+            if (recruiterProfile != null && recruiterProfile.fullName() != null && !recruiterProfile.fullName().isBlank()) {
+                return recruiterProfile.fullName();
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+        return null;
     }
 }

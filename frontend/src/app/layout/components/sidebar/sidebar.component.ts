@@ -15,7 +15,7 @@ import { SessionService } from '../../../core/services/session.service';
         <span class="sidebar__badge">HC</span>
         <div>
           <strong>HireConnect</strong>
-          <small>Talent operating system</small>
+          <small>operating system</small>
         </div>
       </a>
 
@@ -44,8 +44,9 @@ export class SidebarComponent {
       case 'RECRUITER':
         return [
           { label: 'Dashboard', route: '/recruiter/dashboard', icon: 'space_dashboard', description: 'Pulse and quick actions' },
-          { label: 'Profile', route: '/recruiter/profile', icon: 'domain', description: 'Company identity' },
-          { label: 'Manage Jobs', route: '/recruiter/jobs', icon: 'work', description: 'Postings and edits' },
+          { label: 'Profile', route: '/recruiter/profile', icon: 'business_center', description: 'Company identity' },
+          { label: 'Manage Jobs', route: '/recruiter/jobs', icon: 'work', description: 'Postings and applicants' },
+          { label: 'Interviews', route: '/recruiter/interviews', icon: 'calendar_month', description: 'Rooms and schedules' },
           { label: 'Analytics', route: '/recruiter/analytics', icon: 'monitoring', description: 'Views, ratios, pipeline' },
           { label: 'Notifications', route: '/recruiter/notifications', icon: 'notifications', description: 'Unread and alerts' },
         ];

@@ -4,6 +4,7 @@ public record RecruiterProfileSnapshot(
     Integer profileId,
     String role,
     String fullName,
-    String email
+    String email,
+    String companyName
 ) {
 }
