@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 
 import { ProfileResponse } from '../models/profile.models';
@@ -8,8 +7,6 @@ import { SessionService } from './session.service';
 
 @Injectable({ providedIn: 'root' })
 export class ViewerProfileService {
-  private static readonly PROFILE_STORAGE_PREFIX = 'hireconnect.profile.';
-
   private readonly profiles = inject(ProfileService);
   private readonly session = inject(SessionService);
 
@@ -34,20 +31,15 @@ export class ViewerProfileService {
     this.cacheEmail = email;
     this.inFlight$ = this.profiles.getProfileByEmail(email).pipe(
       catchError((error: unknown) => {
-        if (error instanceof HttpErrorResponse && error.status === 404) {
-          return of(this.readStoredProfile(email));
-        }
-
         return this.profiles.getProfiles().pipe(
           map((profiles) => profiles.find((profile) => profile.email.toLowerCase() === email.toLowerCase()) ?? null),
-          catchError(() => of(this.readStoredProfile(email))),
+          catchError(() => {
+            return of(null);
+          }),
         );
       }),
       tap((profile) => {
         this.cachedProfile = profile;
-        if (profile) {
-          this.writeStoredProfile(profile);
-        }
       }),
       finalize(() => {
         this.inFlight$ = null;
@@ -62,9 +54,6 @@ export class ViewerProfileService {
     this.cacheEmail = profile?.email ?? this.session.user()?.email ?? null;
     this.cachedProfile = profile;
     this.inFlight$ = null;
-    if (profile) {
-      this.writeStoredProfile(profile);
-    }
   }
 
   clearCache(): void {
@@ -73,36 +62,4 @@ export class ViewerProfileService {
     this.inFlight$ = null;
   }
 
-  private writeStoredProfile(profile: ProfileResponse): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem(
-      this.profileStorageKey(profile.email),
-      JSON.stringify(profile),
-    );
-  }
-
-  private readStoredProfile(email: string): ProfileResponse | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    const raw = window.localStorage.getItem(this.profileStorageKey(email));
-    if (!raw) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(raw) as ProfileResponse;
-    } catch {
-      window.localStorage.removeItem(this.profileStorageKey(email));
-      return null;
-    }
-  }
-
-  private profileStorageKey(email: string): string {
-    return `${ViewerProfileService.PROFILE_STORAGE_PREFIX}${email.toLowerCase()}`;
-  }
 }

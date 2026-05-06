@@ -6,6 +6,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
+    @NotBlank
+    @Size(min = 2, max = 120)
+    @Pattern(
+        regexp = "^[A-Za-z][A-Za-z .'-]*$",
+        message = "full name may contain letters, spaces, apostrophes, hyphens and dots"
+    )
+    String fullName,
     @NotBlank @Email String email,
     @NotBlank
     @Size(min = 8, max = 72)

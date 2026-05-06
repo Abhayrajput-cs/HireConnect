@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { catchError, filter, interval, map, of, startWith, switchMap } from 'rxjs';
 
+import { ActivityItem } from '../../../core/models/activity.models';
 import { NotificationResponse } from '../../../core/models/notification.models';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SessionService } from '../../../core/services/session.service';
@@ -47,7 +48,7 @@ import { UserMenuComponent } from '../user-menu/user-menu.component';
                 <button type="button" class="ghost-button" (click)="markAllRead()">Mark all read</button>
               </div>
               @if (notifications().length) {
-                @for (item of notifications().slice(0, 5); track item.notificationId) {
+                @for (item of notifications().slice(0, 5); track item.id) {
                   <button type="button" class="notification-popover__item" [class.is-unread]="!item.isRead" (click)="openNotification(item)">
                     <span class="material-symbols-rounded">{{ item.isRead ? 'notifications' : 'notifications_active' }}</span>
                     <span>
@@ -74,9 +75,11 @@ export class TopbarComponent {
   private readonly viewerProfile = inject(ViewerProfileService);
   private readonly notificationsService = inject(NotificationService);
   private readonly toast = inject(ToastService);
-  protected readonly notifications = signal<NotificationResponse[]>([]);
+  protected readonly notifications = signal<ActivityItem[]>([]);
   protected readonly notificationsOpen = signal(false);
-  private readonly lastUnreadIds = signal<Set<number>>(new Set());
+  private readonly lastUnreadIds = signal<Set<string>>(new Set());
+  private hasLoadedNotifications = false;
+  private currentProfileId: number | null = null;
 
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
@@ -98,19 +101,29 @@ export class TopbarComponent {
   protected readonly unreadCount = computed(() => this.notifications().filter((item) => !item.isRead).length);
 
   constructor() {
-    interval(15000).pipe(
+    interval(30000).pipe(
       startWith(0),
-      switchMap(() => this.viewerProfile.getCurrentProfile().pipe(catchError(() => of(null)))),
-      switchMap((profile) => profile ? this.notificationsService.getByUser(profile.profileId).pipe(catchError(() => of([]))) : of([])),
+      switchMap(() => this.viewerProfile.getCurrentProfile(false).pipe(catchError(() => of(null)))),
+      switchMap((profile) => {
+        this.currentProfileId = profile?.profileId ?? null;
+        if (!profile) {
+          return of([] as ActivityItem[]);
+        }
+        return this.notificationsService.getByUser(profile.profileId).pipe(
+          map((items) => items.map((item) => this.toActivityItem(item))),
+          catchError(() => of([] as ActivityItem[])),
+        );
+      }),
     ).subscribe((items) => {
       const unread = items.filter((item) => !item.isRead);
       const previous = this.lastUnreadIds();
-      const fresh = unread.find((item) => !previous.has(item.notificationId));
+      const fresh = unread.find((item) => !previous.has(item.id));
       this.notifications.set(items);
-      this.lastUnreadIds.set(new Set(unread.map((item) => item.notificationId)));
-      if (fresh) {
+      this.lastUnreadIds.set(new Set(unread.map((item) => item.id)));
+      if (fresh && this.hasLoadedNotifications) {
         this.toast.info('New notification', fresh.message);
       }
+      this.hasLoadedNotifications = true;
     });
   }
 
@@ -118,10 +131,10 @@ export class TopbarComponent {
     this.notificationsOpen.update((open) => !open);
   }
 
-  protected openNotification(item: NotificationResponse): void {
-    if (!item.isRead) {
+  protected openNotification(item: ActivityItem): void {
+    if (!item.isRead && item.source === 'notification' && item.notificationId) {
       this.notificationsService.markAsRead(item.notificationId).subscribe(() => {
-        this.notifications.update((items) => items.map((current) => current.notificationId === item.notificationId ? { ...current, isRead: true } : current));
+        this.notifications.update((items) => items.map((current) => current.id === item.id ? { ...current, isRead: true } : current));
       });
     }
     const role = this.session.user()?.role?.toLowerCase();
@@ -132,11 +145,44 @@ export class TopbarComponent {
   }
 
   protected markAllRead(): void {
-    this.viewerProfile.getCurrentProfile().pipe(
-      switchMap((profile) => profile ? this.notificationsService.markAllRead(profile.profileId) : of(undefined)),
+    this.viewerProfile.getCurrentProfile(true).pipe(
+      switchMap((profile) => {
+        if (!profile) {
+          return of(undefined);
+        }
+        return this.notificationsService.markAllRead(profile.profileId).pipe(catchError(() => of(undefined)));
+      }),
     ).subscribe(() => {
       this.notifications.update((items) => items.map((item) => ({ ...item, isRead: true })));
       this.notificationsOpen.set(false);
     });
+  }
+
+  private toActivityItem(notification: NotificationResponse): ActivityItem {
+    const type = notification.type || 'Update';
+    return {
+      id: `notification-${notification.notificationId}`,
+      source: 'notification',
+      notificationId: notification.notificationId,
+      type,
+      title: this.titleForType(type),
+      message: notification.message,
+      status: notification.isRead ? 'READ' : 'UNREAD',
+      createdAt: notification.createdAt,
+      isRead: notification.isRead,
+      actionLabel: this.actionLabelForType(type),
+    };
+  }
+
+  private titleForType(type: string): string {
+    const normalized = type.toUpperCase();
+    if (normalized.includes('INTERVIEW')) return 'Interview update';
+    if (normalized.includes('APPLICATION') || normalized.includes('PIPELINE')) return 'Application update';
+    if (normalized.includes('OFFER')) return 'Offer update';
+    return 'HireConnect update';
+  }
+
+  private actionLabelForType(type: string): string {
+    return type.toUpperCase().includes('INTERVIEW') ? 'Manage interviews' : 'Open notifications';
   }
 }

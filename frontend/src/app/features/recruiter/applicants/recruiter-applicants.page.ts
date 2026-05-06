@@ -136,8 +136,36 @@ type ScheduleForm = FormGroup;
                           <small>{{ interview.location || interview.meetLink || 'Details pending' }}</small>
                         </div>
                         <app-status-pill [label]="interview.status" />
-                        <a class="primary-button" [routerLink]="['/recruiter/interviews', interview.interviewId, 'join']">Join room</a>
+                        <div class="button-row">
+                          @if (interview.status === 'RESCHEDULE_REQUESTED') {
+                            <button class="primary-button" type="button" (click)="acceptReschedule(interview.interviewId)">Accept request</button>
+                            <button class="ghost-button" type="button" (click)="declineReschedule(interview.interviewId)">Decline</button>
+                          }
+                          @if (isOnlineInterview(interview)) {
+                            <a class="primary-button" [routerLink]="['/recruiter/interviews', interview.interviewId, 'join']">Join room</a>
+                          } @else {
+                            <span class="muted">In-person interview</span>
+                          }
+                        </div>
                       </article>
+                      @if (interview.status === 'RESCHEDULE_REQUESTED') {
+                        <article class="reschedule-request-card">
+                          <span class="material-symbols-rounded">event_repeat</span>
+                          <div>
+                            <strong>Candidate requested a new slot</strong>
+                            <p>Requested time: {{ interview.requestedScheduledAt ? (interview.requestedScheduledAt | date:'medium') : 'Not provided' }}</p>
+                            @if (interview.requestedMeetLink) {
+                              <p>Requested meet link: {{ interview.requestedMeetLink }}</p>
+                            }
+                            @if (interview.requestedLocation) {
+                              <p>Requested location: {{ interview.requestedLocation }}</p>
+                            }
+                            @if (interview.requestedNotes) {
+                              <p>Reason: {{ interview.requestedNotes }}</p>
+                            }
+                          </div>
+                        </article>
+                      }
                     }
                   </div>
                 </section>
@@ -147,11 +175,14 @@ type ScheduleForm = FormGroup;
                 @if (canMoveTo(item.application.status, 'SHORTLISTED')) {
                   <button class="ghost-button" type="button" (click)="updateStatus(item.application.applicationId, 'SHORTLISTED')">Shortlist</button>
                 }
-                @if (canMoveTo(item.application.status, 'REJECTED')) {
+                @if (canMoveTo(item.application.status, 'REJECTED') && canRejectNow(item)) {
                   <button class="ghost-button" type="button" (click)="updateStatus(item.application.applicationId, 'REJECTED')">Reject</button>
                 }
-                @if (canMoveTo(item.application.status, 'OFFERED')) {
+                @if (canMoveTo(item.application.status, 'OFFERED') && interviewReadyForDecision(item)) {
                   <button class="ghost-button" type="button" (click)="updateStatus(item.application.applicationId, 'OFFERED')">Offer</button>
+                }
+                @if (item.application.status === 'INTERVIEW_SCHEDULED' && !interviewReadyForDecision(item)) {
+                  <span class="muted">Offer/reject unlocks after candidate confirmation.</span>
                 }
               </div>
 
@@ -199,7 +230,7 @@ type ScheduleForm = FormGroup;
                 <div class="surface-list">
                   <article>
                     <h3>{{ item.interviews.length ? 'Interview already scheduled' : 'Interview scheduling locked' }}</h3>
-                    <p>{{ item.interviews.length ? 'Use the interview slots panel above to open the join room.' : 'Shortlist this application before scheduling an interview.' }}</p>
+                    <p>{{ item.interviews.length ? 'Use the interview slots panel above to review the scheduled slot.' : 'Shortlist this application before scheduling an interview.' }}</p>
                   </article>
                 </div>
               }
@@ -300,6 +331,26 @@ export class RecruiterApplicantsPageComponent {
     return item.application.status === 'SHORTLISTED' && item.interviews.length === 0;
   }
 
+  protected acceptReschedule(interviewId: number): void {
+    this.interviews.acceptReschedule(interviewId).subscribe({
+      next: () => {
+        this.toast.success('Reschedule accepted', 'The interview was moved to the candidate requested slot.');
+        this.load();
+      },
+      error: (error: unknown) => this.toast.error('Reschedule update failed', getErrorMessage(error, 'Unable to accept this request.')),
+    });
+  }
+
+  protected declineReschedule(interviewId: number): void {
+    this.interviews.declineReschedule(interviewId).subscribe({
+      next: () => {
+        this.toast.success('Reschedule declined', 'The original recruiter scheduled interview slot remains active.');
+        this.load();
+      },
+      error: (error: unknown) => this.toast.error('Reschedule update failed', getErrorMessage(error, 'Unable to decline this request.')),
+    });
+  }
+
   protected showFieldError(applicationId: number, fieldName: 'meetLink' | 'location'): boolean {
     const control = this.scheduleForms()[applicationId]?.get(fieldName);
     return !!control && control.invalid && control.touched;
@@ -394,6 +445,20 @@ export class RecruiterApplicantsPageComponent {
 
   protected resumeUrl(item: ApplicantView): string | null {
     return item.application.resumeUrl || item.candidate?.resumeUrl || null;
+  }
+
+  protected interviewReadyForDecision(item: ApplicantView): boolean {
+    return item.interviews.some((interview) =>
+      interview.status === 'CONFIRMED'
+    );
+  }
+
+  protected canRejectNow(item: ApplicantView): boolean {
+    return item.application.status !== 'INTERVIEW_SCHEDULED' || this.interviewReadyForDecision(item);
+  }
+
+  protected isOnlineInterview(interview: InterviewResponse): boolean {
+    return interview.mode === 'ONLINE' && !!interview.meetLink;
   }
 
   protected locationSummary(candidate: ProfileResponse): string {

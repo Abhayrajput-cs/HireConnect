@@ -273,6 +273,7 @@ export class RecruiterProfilePageComponent {
   protected readonly errorMessage = signal('');
   protected readonly submitted = signal(false);
   protected readonly userEmail = computed(() => this.session.user()?.email ?? '');
+  protected readonly registeredFullName = computed(() => this.session.user()?.fullName ?? '');
   protected readonly countryCodes = COUNTRY_CODES;
   protected readonly states = INDIA_STATES;
 
@@ -289,6 +290,7 @@ export class RecruiterProfilePageComponent {
   });
 
   constructor() {
+    this.form.controls.fullName.setValue(this.registeredFullName());
     this.form.controls.email.setValue(this.userEmail());
     this.loadProfile();
   }

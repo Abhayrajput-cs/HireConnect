@@ -25,6 +25,14 @@ export class InterviewService {
     return this.http.patch<InterviewResponse>(`${API_ENDPOINTS.interviews}/${interviewId}/reschedule`, payload);
   }
 
+  acceptReschedule(interviewId: number): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(`${API_ENDPOINTS.interviews}/${interviewId}/reschedule/accept`, {});
+  }
+
+  declineReschedule(interviewId: number): Observable<InterviewResponse> {
+    return this.http.patch<InterviewResponse>(`${API_ENDPOINTS.interviews}/${interviewId}/reschedule/decline`, {});
+  }
+
   cancel(interviewId: number): Observable<void> {
     return this.http.delete<void>(`${API_ENDPOINTS.interviews}/${interviewId}`);
   }

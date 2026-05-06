@@ -60,6 +60,15 @@ public class GatewayRoutesConfig {
                 "/api/v1/analytics/${segment}",
                 "lb://notification-service"
             ))
+            .route("payment-service-v1", predicate -> predicate
+                .path("/api/v1/payments", "/api/v1/payments/**")
+                .uri("lb://payment-service"))
+            .route("payment-service-legacy", serviceRoute(
+                "/api/payments/**",
+                "/api/payments/(?<segment>.*)",
+                "/api/v1/payments/${segment}",
+                "lb://payment-service"
+            ))
             .route("hireconnect-web-root", predicate -> predicate
                 .path("/web", "/web/")
                 .filters(filter -> filter.rewritePath("/web/?", "/"))

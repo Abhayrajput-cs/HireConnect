@@ -50,10 +50,14 @@ type RescheduleForm = FormGroup;
               </div>
 
               <div class="button-row">
-                <a class="primary-button" [routerLink]="['/candidate/interviews', interview.interviewId, 'join']">
-                  <span class="material-symbols-rounded">video_camera_front</span>
-                  Join interview
-                </a>
+                @if (isOnlineInterview(interview)) {
+                  <a class="primary-button" [routerLink]="['/candidate/interviews', interview.interviewId, 'join']">
+                    <span class="material-symbols-rounded">video_camera_front</span>
+                    Join interview
+                  </a>
+                } @else {
+                  <span class="muted">In-person interview at {{ interview.location || 'recruiter location' }}</span>
+                }
                 @if (interview.status === 'SCHEDULED') {
                   <button class="ghost-button" type="button" (click)="confirm(interview.interviewId)">Confirm</button>
                 }
@@ -138,6 +142,10 @@ export class CandidateInterviewsPageComponent {
 
   protected toggleReschedule(interviewId: number): void {
     this.editingInterviewId.set(this.editingInterviewId() === interviewId ? null : interviewId);
+  }
+
+  protected isOnlineInterview(interview: InterviewResponse): boolean {
+    return interview.mode === 'ONLINE' && !!interview.meetLink;
   }
 
   private load(): void {

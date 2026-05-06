@@ -185,6 +185,7 @@ public class InterviewServiceImpl implements InterviewService {
         } else if (CANDIDATE.equals(actorRole)) {
             ProfileSnapshot candidate = requireAuthenticatedProfile(CANDIDATE);
             validateCandidateOwnership(candidate, application);
+            interview.setStatusBeforeReschedule(interview.getStatus());
             interview.setStatus(STATUS_RESCHEDULE_REQUESTED);
             recipients = List.of(job.postedBy());
             recipientEmails = List.of(profileDirectoryClient.getProfileById(job.postedBy()).email());
@@ -196,19 +197,110 @@ public class InterviewServiceImpl implements InterviewService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only candidates or recruiters can reschedule interviews");
         }
 
-        interview.setScheduledAt(validateFutureDateTime(request.scheduledAt()));
-        if (request.meetLink() != null) {
-            interview.setMeetLink(trimToNull(request.meetLink()));
-        }
-        if (request.location() != null) {
-            interview.setLocation(trimToNull(request.location()));
-        }
-        if (request.notes() != null) {
-            interview.setNotes(trimToNull(request.notes()));
+        LocalDateTime requestedDateTime = validateFutureDateTime(request.scheduledAt());
+        if (RECRUITER.equals(actorRole)) {
+            interview.setScheduledAt(requestedDateTime);
+            if (request.meetLink() != null) {
+                interview.setMeetLink(trimToNull(request.meetLink()));
+            }
+            if (request.location() != null) {
+                interview.setLocation(trimToNull(request.location()));
+            }
+            if (request.notes() != null) {
+                interview.setNotes(trimToNull(request.notes()));
+            }
+            clearRescheduleRequest(interview);
+        } else {
+            interview.setRequestedScheduledAt(requestedDateTime);
+            interview.setRequestedMeetLink(request.meetLink() == null ? interview.getMeetLink() : trimToNull(request.meetLink()));
+            interview.setRequestedLocation(request.location() == null ? interview.getLocation() : trimToNull(request.location()));
+            interview.setRequestedNotes(trimToNull(request.notes()));
         }
         validateModeSpecificFields(interview.getMode(), interview.getMeetLink(), interview.getLocation());
         Interview savedInterview = interviewRepository.save(interview);
         publishInterviewEvent(eventType, recipients, recipientEmails, message, emailSubject, emailBody, savedInterview, application, job);
+        return toResponse(savedInterview);
+    }
+
+    @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
+    public InterviewResponse acceptRescheduleRequest(Integer interviewId) {
+        Interview interview = getRequiredInterview(interviewId);
+        if (!STATUS_RESCHEDULE_REQUESTED.equals(interview.getStatus()) || interview.getRequestedScheduledAt() == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "No candidate reschedule request is pending for this interview");
+        }
+
+        ApplicationSnapshot application = applicationCatalogClient.getApplication(interview.getApplicationId());
+        JobSnapshot job = jobCatalogClient.getJob(application.jobId());
+        ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
+        validateRecruiterOwnership(recruiter, job);
+        ProfileSnapshot candidate = profileDirectoryClient.getProfileById(application.candidateId());
+
+        interview.setScheduledAt(validateFutureDateTime(interview.getRequestedScheduledAt()));
+        if (interview.getRequestedMeetLink() != null) {
+            interview.setMeetLink(interview.getRequestedMeetLink());
+        }
+        if (interview.getRequestedLocation() != null) {
+            interview.setLocation(interview.getRequestedLocation());
+        }
+        if (interview.getRequestedNotes() != null) {
+            interview.setNotes(interview.getRequestedNotes());
+        }
+        interview.setStatus(STATUS_RESCHEDULED);
+        clearRescheduleRequest(interview);
+        validateModeSpecificFields(interview.getMode(), interview.getMeetLink(), interview.getLocation());
+        Interview savedInterview = interviewRepository.save(interview);
+        publishInterviewEvent(
+            "INTERVIEW_RESCHEDULE_ACCEPTED",
+            List.of(application.candidateId(), recruiter.profileId()),
+            List.of(candidate.email(), recruiter.email()),
+            "Recruiter accepted interview reschedule for application " + application.applicationId(),
+            "Interview reschedule accepted",
+            "The interview for job " + job.title() + " was moved to the candidate requested slot",
+            savedInterview,
+            application,
+            job
+        );
+        return toResponse(savedInterview);
+    }
+
+    @Override
+    @CacheEvict(
+        cacheNames = {"interviewByApplication", "interviewByStatus", "interviewByRange", "interviewById"},
+        allEntries = true
+    )
+    public InterviewResponse declineRescheduleRequest(Integer interviewId) {
+        Interview interview = getRequiredInterview(interviewId);
+        if (!STATUS_RESCHEDULE_REQUESTED.equals(interview.getStatus())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "No candidate reschedule request is pending for this interview");
+        }
+
+        ApplicationSnapshot application = applicationCatalogClient.getApplication(interview.getApplicationId());
+        JobSnapshot job = jobCatalogClient.getJob(application.jobId());
+        ProfileSnapshot recruiter = requireAuthenticatedProfile(RECRUITER);
+        validateRecruiterOwnership(recruiter, job);
+        ProfileSnapshot candidate = profileDirectoryClient.getProfileById(application.candidateId());
+
+        String previousStatus = StringUtils.hasText(interview.getStatusBeforeReschedule())
+            ? interview.getStatusBeforeReschedule()
+            : STATUS_SCHEDULED;
+        interview.setStatus(previousStatus);
+        clearRescheduleRequest(interview);
+        Interview savedInterview = interviewRepository.save(interview);
+        publishInterviewEvent(
+            "INTERVIEW_RESCHEDULE_DECLINED",
+            List.of(application.candidateId(), recruiter.profileId()),
+            List.of(candidate.email(), recruiter.email()),
+            "Recruiter declined interview reschedule for application " + application.applicationId(),
+            "Interview reschedule declined",
+            "The interview for job " + job.title() + " will happen at the original scheduled time",
+            savedInterview,
+            application,
+            job
+        );
         return toResponse(savedInterview);
     }
 
@@ -416,8 +508,20 @@ public class InterviewServiceImpl implements InterviewService {
             interview.getMeetLink(),
             interview.getLocation(),
             interview.getStatus(),
-            interview.getNotes()
+            interview.getNotes(),
+            interview.getRequestedScheduledAt(),
+            interview.getRequestedMeetLink(),
+            interview.getRequestedLocation(),
+            interview.getRequestedNotes()
         );
+    }
+
+    private void clearRescheduleRequest(Interview interview) {
+        interview.setRequestedScheduledAt(null);
+        interview.setRequestedMeetLink(null);
+        interview.setRequestedLocation(null);
+        interview.setRequestedNotes(null);
+        interview.setStatusBeforeReschedule(null);
     }
 
     private void publishInterviewEvent(

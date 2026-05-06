@@ -39,6 +39,21 @@ public class Interview {
     @Column(length = 2000)
     private String notes;
 
+    @Column(name = "requested_scheduled_at")
+    private LocalDateTime requestedScheduledAt;
+
+    @Column(name = "requested_meet_link", length = 500)
+    private String requestedMeetLink;
+
+    @Column(name = "requested_location", length = 255)
+    private String requestedLocation;
+
+    @Column(name = "requested_notes", length = 2000)
+    private String requestedNotes;
+
+    @Column(name = "status_before_reschedule", length = 40)
+    private String statusBeforeReschedule;
+
     public Integer getInterviewId() {
         return interviewId;
     }
@@ -101,5 +116,45 @@ public class Interview {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public LocalDateTime getRequestedScheduledAt() {
+        return requestedScheduledAt;
+    }
+
+    public void setRequestedScheduledAt(LocalDateTime requestedScheduledAt) {
+        this.requestedScheduledAt = requestedScheduledAt;
+    }
+
+    public String getRequestedMeetLink() {
+        return requestedMeetLink;
+    }
+
+    public void setRequestedMeetLink(String requestedMeetLink) {
+        this.requestedMeetLink = requestedMeetLink;
+    }
+
+    public String getRequestedLocation() {
+        return requestedLocation;
+    }
+
+    public void setRequestedLocation(String requestedLocation) {
+        this.requestedLocation = requestedLocation;
+    }
+
+    public String getRequestedNotes() {
+        return requestedNotes;
+    }
+
+    public void setRequestedNotes(String requestedNotes) {
+        this.requestedNotes = requestedNotes;
+    }
+
+    public String getStatusBeforeReschedule() {
+        return statusBeforeReschedule;
+    }
+
+    public void setStatusBeforeReschedule(String statusBeforeReschedule) {
+        this.statusBeforeReschedule = statusBeforeReschedule;
     }
 }

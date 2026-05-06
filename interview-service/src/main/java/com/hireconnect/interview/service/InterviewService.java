@@ -15,6 +15,10 @@ public interface InterviewService {
 
     InterviewResponse rescheduleInterview(Integer interviewId, InterviewRescheduleRequest request);
 
+    InterviewResponse acceptRescheduleRequest(Integer interviewId);
+
+    InterviewResponse declineRescheduleRequest(Integer interviewId);
+
     void cancelInterview(Integer interviewId);
 
     List<InterviewResponse> getByApplication(Integer applicationId);

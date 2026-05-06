@@ -40,7 +40,7 @@ public class SecurityConfig {
         http
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health/**", "/actuator/info", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/jobs/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/jobs/**").hasRole("RECRUITER")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/jobs/**").hasRole("RECRUITER")

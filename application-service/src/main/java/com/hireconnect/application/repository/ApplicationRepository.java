@@ -21,4 +21,6 @@ public interface ApplicationRepository extends JpaRepository<Application, Intege
     List<Application> findByAppliedAtBetweenOrderByAppliedAtDesc(LocalDate startDate, LocalDate endDate);
 
     int countByJobId(Integer jobId);
+
+    int countByCandidateId(Integer candidateId);
 }

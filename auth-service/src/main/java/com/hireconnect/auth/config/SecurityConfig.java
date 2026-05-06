@@ -43,10 +43,22 @@ public class SecurityConfig {
                 PathPatternRequestMatcher.withDefaults().matcher("/auth/**")
             ))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health/**", "/h2-console/**", "/oauth2/**", "/login/oauth2/**").permitAll()
+                .requestMatchers(
+                    "/actuator/health/**",
+                    "/h2-console/**",
+                    "/oauth2/**",
+                    "/login/oauth2/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                ).permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/auth/register",
                     "/auth/login",
+                    "/auth/verify-email",
+                    "/auth/resend-verification",
+                    "/auth/forgot-password",
+                    "/auth/reset-password",
                     "/auth/refresh",
                     "/auth/validate",
                     "/auth/logout"

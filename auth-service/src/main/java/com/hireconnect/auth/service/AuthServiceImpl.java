@@ -1,6 +1,7 @@
 package com.hireconnect.auth.service;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
@@ -12,11 +13,17 @@ import org.springframework.util.StringUtils;
 import com.hireconnect.auth.config.JwtProperties;
 import com.hireconnect.auth.domain.UserCredential;
 import com.hireconnect.auth.dto.AuthResponse;
+import com.hireconnect.auth.dto.ForgotPasswordRequest;
 import com.hireconnect.auth.dto.LoginRequest;
+import com.hireconnect.auth.dto.MessageResponse;
+import com.hireconnect.auth.dto.RegistrationResponse;
 import com.hireconnect.auth.dto.RegisterRequest;
+import com.hireconnect.auth.dto.ResendVerificationRequest;
+import com.hireconnect.auth.dto.ResetPasswordRequest;
 import com.hireconnect.auth.dto.TokenValidationRequest;
 import com.hireconnect.auth.dto.TokenValidationResponse;
 import com.hireconnect.auth.dto.UserSummary;
+import com.hireconnect.auth.dto.VerifyEmailRequest;
 import com.hireconnect.auth.exception.ApiException;
 import com.hireconnect.auth.repository.AuthRepository;
 import com.hireconnect.auth.security.JwtService;
@@ -31,23 +38,27 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthServiceImpl(
         AuthRepository authRepository,
         PasswordEncoder passwordEncoder,
         JwtService jwtService,
-        JwtProperties jwtProperties
+        JwtProperties jwtProperties,
+        EmailVerificationService emailVerificationService
     ) {
         this.authRepository = authRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegistrationResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
+        String fullName = normalizeFullName(request.fullName());
         String role = normalizeRole(request.role());
 
         if (authRepository.existsByEmail(email)) {
@@ -56,11 +67,22 @@ public class AuthServiceImpl implements AuthService {
 
         UserCredential user = new UserCredential();
         user.setEmail(email);
+        user.setFullName(fullName);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(role);
         user.setProvider(LOCAL_PROVIDER);
+        emailVerificationService.prepareVerification(user);
 
-        return issueTokens(authRepository.save(user));
+        UserCredential saved = authRepository.save(user);
+        emailVerificationService.sendVerification(saved);
+        return new RegistrationResponse(
+            saved.getEmail(),
+            saved.getRole(),
+            !saved.isEmailVerified(),
+            saved.isEmailVerified()
+                ? "Account created successfully"
+                : "Verification code sent to your email. Verify before login."
+        );
     }
 
     @Override
@@ -76,8 +98,90 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
+        if (!user.isEmailVerified()) {
+            if (!StringUtils.hasText(user.getEmailVerificationCode()) && user.getEmailVerificationExpiresAt() == null) {
+                user.setEmailVerified(true);
+                authRepository.save(user);
+                return issueTokens(user);
+            }
+            throw new ApiException(HttpStatus.FORBIDDEN, "Please verify your email before signing in");
+        }
 
         return issueTokens(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse verifyEmail(VerifyEmailRequest request) {
+        UserCredential user = authRepository.findByEmail(normalizeEmail(request.email()))
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found for this email"));
+        if (user.isEmailVerified()) {
+            return issueTokens(user);
+        }
+        if (!StringUtils.hasText(user.getEmailVerificationCode())
+            || user.getEmailVerificationExpiresAt() == null
+            || user.getEmailVerificationExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Verification code expired. Request a new code.");
+        }
+        if (!user.getEmailVerificationCode().equals(request.code().trim())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid verification code");
+        }
+        user.setEmailVerified(true);
+        user.setEmailVerificationCode(null);
+        user.setEmailVerificationExpiresAt(null);
+        return issueTokens(authRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public RegistrationResponse resendVerification(ResendVerificationRequest request) {
+        UserCredential user = authRepository.findByEmail(normalizeEmail(request.email()))
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found for this email"));
+        if (user.isEmailVerified()) {
+            return new RegistrationResponse(user.getEmail(), user.getRole(), false, "Email is already verified");
+        }
+        emailVerificationService.prepareVerification(user);
+        UserCredential saved = authRepository.save(user);
+        emailVerificationService.sendVerification(saved);
+        return new RegistrationResponse(saved.getEmail(), saved.getRole(), true, "Verification code resent to your email");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        UserCredential user = authRepository.findByEmail(normalizeEmail(request.email()))
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found for this email"));
+        if (!LOCAL_PROVIDER.equals(user.getProvider())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "This account uses GitHub OAuth. Use GitHub sign-in instead.");
+        }
+        if (!user.isEmailVerified()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Please verify your email before resetting your password");
+        }
+        emailVerificationService.preparePasswordReset(user);
+        UserCredential saved = authRepository.save(user);
+        emailVerificationService.sendPasswordReset(saved);
+        return new MessageResponse("Password reset code sent to your verified email");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        UserCredential user = authRepository.findByEmail(normalizeEmail(request.email()))
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found for this email"));
+        if (!StringUtils.hasText(user.getPasswordResetCode())
+            || user.getPasswordResetExpiresAt() == null
+            || user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Password reset code expired. Request a new code.");
+        }
+        if (!user.getPasswordResetCode().equals(request.code().trim())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid password reset code");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordResetCode(null);
+        user.setPasswordResetExpiresAt(null);
+        user.setTokensInvalidBefore(Instant.now());
+        authRepository.save(user);
+        return new MessageResponse("Password updated successfully. Please sign in again.");
     }
 
     @Override
@@ -170,9 +274,11 @@ public class AuthServiceImpl implements AuthService {
             .orElseGet(() -> {
                 UserCredential created = new UserCredential();
                 created.setEmail(email);
+                created.setFullName(resolveGithubName(githubUser));
                 created.setPasswordHash("");
                 created.setRole(normalizeRole(requestedRole));
                 created.setProvider(GITHUB_PROVIDER);
+                created.setEmailVerified(true);
                 return authRepository.save(created);
             });
 
@@ -204,11 +310,30 @@ public class AuthServiceImpl implements AuthService {
     private UserSummary toUserSummary(UserCredential user) {
         return new UserSummary(
             user.getUserId(),
+            user.getFullName(),
             user.getEmail(),
             user.getRole(),
             user.getProvider(),
             user.getCreatedAt()
         );
+    }
+
+    private String normalizeFullName(String fullName) {
+        String normalized = fullName == null ? "" : fullName.trim().replaceAll("\\s+", " ");
+        if (!StringUtils.hasText(normalized)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Full name is required");
+        }
+        return normalized;
+    }
+
+    private String resolveGithubName(GithubOAuthUser githubUser) {
+        if (StringUtils.hasText(githubUser.name())) {
+            return normalizeFullName(githubUser.name());
+        }
+        if (StringUtils.hasText(githubUser.login())) {
+            return normalizeFullName(githubUser.login());
+        }
+        return "GitHub User";
     }
 
     private String normalizeEmail(String email) {

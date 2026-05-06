@@ -21,4 +21,6 @@ public interface JobRepository extends JpaRepository<Job, Integer>, JpaSpecifica
     List<Job> findByStatusIgnoreCase(String status);
 
     List<Job> findByTitleContainingIgnoreCase(String title);
+
+    int countByPostedBy(Integer postedBy);
 }

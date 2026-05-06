@@ -2,6 +2,7 @@ import { UserRole } from '../constants/role.constants';
 
 export interface UserSummary {
   userId: number;
+  fullName: string;
   email: string;
   role: UserRole;
   provider: string;
@@ -17,15 +18,46 @@ export interface AuthResponse {
   user: UserSummary;
 }
 
+export interface RegistrationResponse {
+  email: string;
+  role: Exclude<UserRole, 'ADMIN'>;
+  verificationRequired: boolean;
+  message: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
 export interface RegisterRequest {
+  fullName: string;
   email: string;
   password: string;
   role: Exclude<UserRole, 'ADMIN'>;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
 }
 
 export interface RefreshTokenRequest {

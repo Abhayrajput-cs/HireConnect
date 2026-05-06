@@ -10,5 +10,7 @@ export const CANDIDATE_ROUTES: Routes = [
   { path: 'interviews/:interviewId/join', loadComponent: () => import('../interviews/interview-room/interview-room.page').then((m) => m.InterviewRoomPageComponent) },
   { path: 'notifications', loadComponent: () => import('./notifications/candidate-notifications.page').then((m) => m.CandidateNotificationsPageComponent) },
   { path: 'bookmarks', loadComponent: () => import('./bookmarks/candidate-bookmarks.page').then((m) => m.CandidateBookmarksPageComponent) },
+  { path: 'subscription', loadComponent: () => import('../subscription/subscription.page').then((m) => m.SubscriptionPageComponent) },
+  { path: 'subscription/checkout', loadComponent: () => import('../subscription/payment-checkout.page').then((m) => m.PaymentCheckoutPageComponent) },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 ];

@@ -42,9 +42,11 @@ public class SecurityConfig {
         http
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health/**", "/actuator/info", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/interviews").hasRole("RECRUITER")
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/interviews/*/confirm").hasRole("CANDIDATE")
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/interviews/*/reschedule/accept").hasRole("RECRUITER")
+                .requestMatchers(HttpMethod.PATCH, "/api/v1/interviews/*/reschedule/decline").hasRole("RECRUITER")
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/interviews/*/reschedule").hasAnyRole("CANDIDATE", "RECRUITER")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/interviews/*").hasRole("RECRUITER")
                 .requestMatchers(HttpMethod.GET, "/api/v1/interviews/status/**").hasRole("RECRUITER")

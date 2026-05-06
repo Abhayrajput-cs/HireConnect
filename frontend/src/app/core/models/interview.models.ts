@@ -23,4 +23,8 @@ export interface InterviewResponse {
   location: string | null;
   status: string;
   notes: string | null;
+  requestedScheduledAt?: string | null;
+  requestedMeetLink?: string | null;
+  requestedLocation?: string | null;
+  requestedNotes?: string | null;
 }

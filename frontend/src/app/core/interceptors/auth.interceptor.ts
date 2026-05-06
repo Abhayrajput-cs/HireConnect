@@ -6,6 +6,9 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { API_ENDPOINTS } from '../constants/api.constants';
 import { AuthService } from '../services/auth.service';
 import { SessionService } from '../services/session.service';
+import { ToastService } from '../services/toast.service';
+
+let loginRedirectInProgress = false;
 
 function isPublicAuthRequest(url: string): boolean {
   return url.includes('/api/auth/login')
@@ -18,6 +21,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const session = inject(SessionService);
   const auth = inject(AuthService);
   const router = inject(Router);
+  const toast = inject(ToastService);
   const accessToken = session.accessToken();
 
   const authenticatedRequest = accessToken && !isPublicAuthRequest(req.url)
@@ -39,7 +43,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (!shouldRefresh) {
         if (error.status === 401 && !req.url.includes('/api/auth/login')) {
           session.clear(false);
-          void router.navigate(['/login']);
+          if (!loginRedirectInProgress && router.url !== '/login') {
+            loginRedirectInProgress = true;
+            toast.info('Please sign in again', 'Your session has expired. Sign in again to continue securely.');
+            void router.navigate(['/login']).finally(() => {
+              window.setTimeout(() => {
+                loginRedirectInProgress = false;
+              }, 1000);
+            });
+          }
         }
         return throwError(() => error);
       }
@@ -56,7 +68,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         ),
         catchError((refreshError) => {
           session.clear(false);
-          void router.navigate(['/login']);
+          if (!loginRedirectInProgress && router.url !== '/login') {
+            loginRedirectInProgress = true;
+            toast.info('Please sign in again', 'Your session could not be restored. Sign in again to continue.');
+            void router.navigate(['/login']).finally(() => {
+              window.setTimeout(() => {
+                loginRedirectInProgress = false;
+              }, 1000);
+            });
+          }
           return throwError(() => refreshError);
         }),
       );

@@ -16,6 +16,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hireconnect.job.client.RecruiterDirectoryClient;
 import com.hireconnect.job.client.RecruiterProfileSnapshot;
+import com.hireconnect.job.client.SubscriptionAccessClient;
 import com.hireconnect.job.domain.Job;
 import com.hireconnect.job.dto.JobRequest;
 import com.hireconnect.job.dto.JobResponse;
@@ -31,22 +32,26 @@ public class JobServiceImpl implements JobService {
 
     private static final String RECRUITER = "RECRUITER";
     private static final String DEFAULT_STATUS = "OPEN";
+    private static final int FREE_RECRUITER_JOB_LIMIT = 3;
 
     private final JobRepository jobRepository;
     private final RecruiterDirectoryClient recruiterDirectoryClient;
     private final ObjectMapper objectMapper;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final SubscriptionAccessClient subscriptionAccessClient;
 
     public JobServiceImpl(
         JobRepository jobRepository,
         RecruiterDirectoryClient recruiterDirectoryClient,
         ObjectMapper objectMapper,
-        NotificationEventPublisher notificationEventPublisher
+        NotificationEventPublisher notificationEventPublisher,
+        SubscriptionAccessClient subscriptionAccessClient
     ) {
         this.jobRepository = jobRepository;
         this.recruiterDirectoryClient = recruiterDirectoryClient;
         this.objectMapper = objectMapper;
         this.notificationEventPublisher = notificationEventPublisher;
+        this.subscriptionAccessClient = subscriptionAccessClient;
     }
 
     @Override
@@ -60,6 +65,7 @@ public class JobServiceImpl implements JobService {
     public JobResponse addJob(JobRequest request) {
         validateSalaryRange(request.salaryMin(), request.salaryMax());
         ensureRecruiterOwner(request.postedBy());
+        enforceFreeRecruiterJobLimit(request.postedBy());
 
         Job job = new Job();
         job.setTitle(requiredText(request.title(), "title"));
@@ -321,6 +327,19 @@ public class JobServiceImpl implements JobService {
             job.getStatus(),
             job.getPostedAt()
         );
+    }
+
+    private void enforceFreeRecruiterJobLimit(Integer recruiterProfileId) {
+        if (subscriptionAccessClient.hasPremiumAccess(recruiterProfileId)) {
+            return;
+        }
+        int postedJobs = jobRepository.countByPostedBy(recruiterProfileId);
+        if (postedJobs >= FREE_RECRUITER_JOB_LIMIT) {
+            throw new ApiException(
+                HttpStatus.PAYMENT_REQUIRED,
+                "Free recruiters can post up to 3 jobs. Upgrade to Recruiter Premium for unlimited job posting."
+            );
+        }
     }
 
     private String resolveCompanyName(Integer postedBy) {

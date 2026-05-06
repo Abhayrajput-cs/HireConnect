@@ -38,10 +38,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         OAuth2User principal = (OAuth2User) authentication.getPrincipal();
         String email = principal.getAttribute("email");
         String login = principal.getAttribute("login");
-        Object id = principal.getAttribute("id");
+        String name = principal.getAttribute("name");
 
         AuthResponse authResponse = authService.handleGithubLogin(
-            new AuthService.GithubOAuthUser(email, login),
+            new AuthService.GithubOAuthUser(email, login, name),
             resolveRequestedRole(request)
         );
 
@@ -50,7 +50,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             .queryParam("refreshToken", authResponse.refreshToken())
             .queryParam("role", authResponse.user().role())
             .queryParam("email", authResponse.user().email())
-            .build(true)
+            .queryParam("fullName", authResponse.user().fullName())
+            .build()
+            .encode()
             .toUriString();
 
         clearCookies(request, response);

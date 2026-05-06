@@ -8,12 +8,18 @@ import { API_ENDPOINTS } from '../constants/api.constants';
 import { UserRole } from '../constants/role.constants';
 import {
   AuthResponse,
+  ForgotPasswordRequest,
   LoginRequest,
+  MessageResponse,
   RefreshTokenRequest,
+  RegistrationResponse,
   RegisterRequest,
+  ResendVerificationRequest,
+  ResetPasswordRequest,
   SessionSnapshot,
   TokenValidationResponse,
   UserSummary,
+  VerifyEmailRequest,
 } from '../models/auth.models';
 import { SessionService } from './session.service';
 import { StorageService } from './storage.service';
@@ -61,10 +67,26 @@ export class AuthService {
     );
   }
 
-  register(payload: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${API_ENDPOINTS.auth}/register`, payload).pipe(
+  register(payload: RegisterRequest): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${API_ENDPOINTS.auth}/register`, payload);
+  }
+
+  verifyEmail(payload: VerifyEmailRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${API_ENDPOINTS.auth}/verify-email`, payload).pipe(
       tap((response) => this.persistResponse(response)),
     );
+  }
+
+  resendVerification(payload: ResendVerificationRequest): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${API_ENDPOINTS.auth}/resend-verification`, payload);
+  }
+
+  forgotPassword(payload: ForgotPasswordRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API_ENDPOINTS.auth}/forgot-password`, payload);
+  }
+
+  resetPassword(payload: ResetPasswordRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API_ENDPOINTS.auth}/reset-password`, payload);
   }
 
   logout(): Observable<void> {
@@ -117,6 +139,7 @@ export class AuthService {
     const accessToken = params.get('accessToken');
     const refreshToken = params.get('refreshToken');
     const email = params.get('email');
+    const fullName = params.get('fullName');
     const role = params.get('role') as UserRole | null;
 
     if (!accessToken || !refreshToken || !email || !role) {
@@ -128,6 +151,7 @@ export class AuthService {
       refreshToken,
       user: {
         userId: -1,
+        fullName: fullName || email.split('@')[0],
         email,
         role,
         provider: 'GITHUB',

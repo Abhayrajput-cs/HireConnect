@@ -47,6 +47,7 @@ export class SidebarComponent {
           { label: 'Profile', route: '/recruiter/profile', icon: 'business_center', description: 'Company identity' },
           { label: 'Manage Jobs', route: '/recruiter/jobs', icon: 'work', description: 'Postings and applicants' },
           { label: 'Interviews', route: '/recruiter/interviews', icon: 'calendar_month', description: 'Rooms and schedules' },
+          { label: 'Subscription', route: '/recruiter/subscription', icon: 'workspace_premium', description: 'Premium hiring' },
           { label: 'Analytics', route: '/recruiter/analytics', icon: 'monitoring', description: 'Views, ratios, pipeline' },
           { label: 'Notifications', route: '/recruiter/notifications', icon: 'notifications', description: 'Unread and alerts' },
         ];
@@ -65,6 +66,7 @@ export class SidebarComponent {
           { label: 'Browse Jobs', route: '/candidate/jobs', icon: 'travel_explore', description: 'Search open roles' },
           { label: 'Applications', route: '/candidate/applications', icon: 'description', description: 'Pipeline history' },
           { label: 'Interviews', route: '/candidate/interviews', icon: 'calendar_month', description: 'Schedules and updates' },
+          { label: 'Subscription', route: '/candidate/subscription', icon: 'workspace_premium', description: 'Premium boost' },
           { label: 'Bookmarks', route: '/candidate/bookmarks', icon: 'bookmark', description: 'Saved roles' },
           { label: 'Notifications', route: '/candidate/notifications', icon: 'notifications_active', description: 'Unread activity' },
         ];

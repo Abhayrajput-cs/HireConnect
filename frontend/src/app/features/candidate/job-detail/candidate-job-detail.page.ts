@@ -94,8 +94,8 @@ import { StatusPillComponent } from '../../../shared/components/status-pill/stat
             } @else if (existingApplication()) {
               <app-empty-state
                 icon="AP"
-                title="Already applied"
-                description="You have already submitted an application for this role."
+                title="Applied"
+                description="You have submitted an application for this role."
                 actionLabel="View applications"
                 actionLink="/candidate/applications"
               />

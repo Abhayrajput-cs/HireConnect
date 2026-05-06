@@ -16,12 +16,16 @@ import org.springframework.util.StringUtils;
 
 import com.hireconnect.application.client.CandidateDirectoryClient;
 import com.hireconnect.application.client.CandidateProfileSnapshot;
+import com.hireconnect.application.client.InterviewCatalogClient;
 import com.hireconnect.application.client.JobCatalogClient;
 import com.hireconnect.application.client.JobSnapshot;
+import com.hireconnect.application.client.SubscriptionAccessClient;
 import com.hireconnect.application.domain.Application;
 import com.hireconnect.application.dto.ApplicationRequest;
 import com.hireconnect.application.dto.ApplicationResponse;
 import com.hireconnect.application.exception.ApiException;
+import com.hireconnect.application.messaging.NotificationEvent;
+import com.hireconnect.application.messaging.NotificationEventPublisher;
 import com.hireconnect.application.repository.ApplicationRepository;
 
 @Service
@@ -36,6 +40,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private static final String OFFER_DECLINED = "OFFER_DECLINED";
     private static final String REJECTED = "REJECTED";
     private static final String WITHDRAWN = "WITHDRAWN";
+    private static final int FREE_CANDIDATE_APPLICATION_LIMIT = 3;
     private static final Set<String> VALID_STATUSES = Set.of(
         APPLIED,
         SHORTLISTED,
@@ -56,15 +61,24 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final CandidateDirectoryClient candidateDirectoryClient;
     private final JobCatalogClient jobCatalogClient;
+    private final InterviewCatalogClient interviewCatalogClient;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final SubscriptionAccessClient subscriptionAccessClient;
 
     public ApplicationServiceImpl(
         ApplicationRepository applicationRepository,
         CandidateDirectoryClient candidateDirectoryClient,
-        JobCatalogClient jobCatalogClient
+        JobCatalogClient jobCatalogClient,
+        InterviewCatalogClient interviewCatalogClient,
+        NotificationEventPublisher notificationEventPublisher,
+        SubscriptionAccessClient subscriptionAccessClient
     ) {
         this.applicationRepository = applicationRepository;
         this.candidateDirectoryClient = candidateDirectoryClient;
         this.jobCatalogClient = jobCatalogClient;
+        this.interviewCatalogClient = interviewCatalogClient;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.subscriptionAccessClient = subscriptionAccessClient;
     }
 
     @Override
@@ -80,6 +94,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             .ifPresent(existing -> {
                 throw new ApiException(HttpStatus.CONFLICT, "Candidate has already applied to this job");
             });
+        enforceFreeCandidateApplicationLimit(request.candidateId());
 
         Application application = new Application();
         application.setJobId(request.jobId());
@@ -88,7 +103,21 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(APPLIED);
         application.setCoverLetter(request.coverLetter());
         application.setResumeUrl(resolveResumeUrl(request.resumeUrl(), candidateProfile.resumeUrl()));
-        return toResponse(applicationRepository.save(application));
+        Application saved = applicationRepository.save(application);
+        CandidateProfileSnapshot recruiter = loadProfileQuietly(job.postedBy());
+        publishApplicationEvent(
+            "APPLICATION_SUBMITTED",
+            "APPLICATION",
+            "New application received for " + job.title(),
+            recruiter == null ? List.of() : List.of(job.postedBy()),
+            recruiter == null ? List.of() : List.of(recruiter.email()),
+            "New application received",
+            candidateProfile.email() + " applied for " + job.title(),
+            saved,
+            job,
+            candidateProfile
+        );
+        return toResponse(saved);
     }
 
     @Override
@@ -152,9 +181,15 @@ public class ApplicationServiceImpl implements ApplicationService {
                 "Invalid application status transition from " + currentStatus.name() + " to " + nextStatus.name()
             );
         }
+        if (currentStatus == ApplicationStatus.INTERVIEW_SCHEDULED
+            && (nextStatus == ApplicationStatus.OFFERED || nextStatus == ApplicationStatus.REJECTED)) {
+            ensureInterviewCompleted(application.getApplicationId(), nextStatus);
+        }
 
         application.setStatus(nextStatus.name());
-        return toResponse(applicationRepository.save(application));
+        Application saved = applicationRepository.save(application);
+        publishStatusNotification(saved, nextStatus);
+        return toResponse(saved);
     }
 
     @Override
@@ -320,7 +355,102 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         application.setStatus(nextStatus.name());
-        return toResponse(applicationRepository.save(application));
+        Application saved = applicationRepository.save(application);
+        publishStatusNotification(saved, nextStatus);
+        return toResponse(saved);
+    }
+
+    private void enforceFreeCandidateApplicationLimit(Integer candidateProfileId) {
+        if (subscriptionAccessClient.hasPremiumAccess(candidateProfileId)) {
+            return;
+        }
+        int applications = applicationRepository.countByCandidateId(candidateProfileId);
+        if (applications >= FREE_CANDIDATE_APPLICATION_LIMIT) {
+            throw new ApiException(
+                HttpStatus.PAYMENT_REQUIRED,
+                "Free candidates can apply to up to 3 jobs. Upgrade to Candidate Premium for unlimited applications."
+            );
+        }
+    }
+
+    private void ensureInterviewCompleted(Integer applicationId, ApplicationStatus nextStatus) {
+        boolean confirmed = interviewCatalogClient.getByApplication(applicationId).stream()
+            .anyMatch(interview -> "CONFIRMED".equalsIgnoreCase(interview.status()));
+        if (!confirmed) {
+            String action = nextStatus == ApplicationStatus.OFFERED ? "offer" : "reject after interview";
+            throw new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "Recruiter can " + action + " only after the candidate confirms the interview"
+            );
+        }
+    }
+
+    private void publishStatusNotification(Application application, ApplicationStatus status) {
+        JobSnapshot job = jobCatalogClient.getJob(application.getJobId());
+        CandidateProfileSnapshot candidate = candidateDirectoryClient.getCandidateProfile(application.getCandidateId());
+        String title = job.title() == null ? "the role" : job.title();
+        String message = switch (status) {
+            case SHORTLISTED -> "You were shortlisted for " + title + ".";
+            case INTERVIEW_SCHEDULED -> "Interview scheduling has started for " + title + ".";
+            case OFFERED -> "You received an offer for " + title + ".";
+            case REJECTED -> "Your application for " + title + " was rejected.";
+            case OFFER_ACCEPTED -> "Candidate accepted the offer for " + title + ".";
+            case OFFER_DECLINED -> "Candidate declined the offer for " + title + ".";
+            default -> "Application updated for " + title + ".";
+        };
+        boolean notifyRecruiter = status == ApplicationStatus.OFFER_ACCEPTED || status == ApplicationStatus.OFFER_DECLINED;
+        CandidateProfileSnapshot recruiter = notifyRecruiter ? loadProfileQuietly(job.postedBy()) : null;
+        publishApplicationEvent(
+            "APPLICATION_" + status.name(),
+            "APPLICATION",
+            message,
+            notifyRecruiter ? List.of(job.postedBy()) : List.of(application.getCandidateId()),
+            notifyRecruiter && recruiter != null ? List.of(recruiter.email()) : List.of(candidate.email()),
+            "Application update: " + title,
+            message,
+            application,
+            job,
+            candidate
+        );
+    }
+
+    private void publishApplicationEvent(
+        String eventType,
+        String notificationType,
+        String message,
+        List<Integer> recipientUserIds,
+        List<String> recipientEmails,
+        String emailSubject,
+        String emailBody,
+        Application application,
+        JobSnapshot job,
+        CandidateProfileSnapshot candidate
+    ) {
+        notificationEventPublisher.publish(new NotificationEvent(
+            eventType,
+            notificationType,
+            message,
+            recipientUserIds,
+            recipientEmails,
+            null,
+            emailSubject,
+            emailBody,
+            application.getApplicationId(),
+            application.getJobId(),
+            job.postedBy(),
+            candidate.profileId(),
+            application.getStatus(),
+            application.getAppliedAt(),
+            java.time.LocalDateTime.now()
+        ));
+    }
+
+    private CandidateProfileSnapshot loadProfileQuietly(Integer profileId) {
+        try {
+            return candidateDirectoryClient.getCandidateProfile(profileId);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private static Map<ApplicationStatus, Set<ApplicationStatus>> buildTransitions() {

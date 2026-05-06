@@ -10,5 +10,6 @@ export const API_ENDPOINTS = {
   interviews: `${gateway}/api/v1/interviews`,
   notifications: `${gateway}/api/v1/notifications`,
   analytics: `${gateway}/api/v1/analytics`,
+  payments: `${gateway}/api/v1/payments`,
   githubOAuthStart: `${environment.authDirectUrl}/oauth2/authorization/github`,
 } as const;

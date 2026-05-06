@@ -111,19 +111,6 @@ type AddressForm = FormGroup;
               </div>
 
               <div class="resume-row">
-                <span class="material-symbols-rounded">article</span>
-                <div>
-                  <label>Resume</label>
-                  @if (existingProfile()!.resumeUrl) {
-                    <strong>{{ resumeFileName() }}</strong>
-                    <a [href]="existingProfile()!.resumeUrl!" target="_blank" rel="noreferrer">Preview</a>
-                  } @else {
-                    <strong>Not added</strong>
-                  }
-                </div>
-              </div>
-
-              <div class="resume-row">
                 <span class="material-symbols-rounded">link</span>
                 <div>
                   <label>Resume URL</label>
@@ -353,6 +340,7 @@ export class CandidateProfilePageComponent {
   protected readonly errorMessage = signal('');
   protected readonly submitted = signal(false);
   protected readonly userEmail = computed(() => this.session.user()?.email ?? '');
+  protected readonly registeredFullName = computed(() => this.session.user()?.fullName ?? '');
   protected readonly countryCodes = COUNTRY_CODES;
   protected readonly states = INDIA_STATES;
 
@@ -370,6 +358,7 @@ export class CandidateProfilePageComponent {
   });
 
   constructor() {
+    this.form.controls.fullName.setValue(this.registeredFullName());
     this.form.controls.email.setValue(this.userEmail());
     this.loadProfile();
   }

@@ -1812,6 +1812,338 @@ input, select, textarea {
   color: #ff6a82;
 }
 
+.reschedule-request-card,
+.subscription-status-card,
+.payment-checkout-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(74, 31, 117, 0.42), rgba(5, 18, 34, 0.58));
+}
+
+.reschedule-request-card > .material-symbols-rounded,
+.payment-checkout-card > .material-symbols-rounded {
+  color: #c084fc;
+  font-size: 2rem;
+}
+
+.reschedule-request-card p,
+.subscription-status-card p,
+.payment-checkout-card p,
+.payment-checkout-card small {
+  margin: 0.2rem 0 0;
+  color: #aebbd0;
+  overflow-wrap: anywhere;
+}
+
+.payment-checkout-screen {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1.25rem;
+  border-color: rgba(18, 170, 255, 0.36);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(17, 154, 255, 0.18), transparent 24rem),
+    linear-gradient(135deg, rgba(13, 43, 75, 0.78), rgba(5, 18, 34, 0.92));
+}
+
+.payment-checkout-screen > .material-symbols-rounded {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  color: #35e1a0;
+  background: rgba(34, 197, 122, 0.12);
+}
+
+.payment-checkout-screen h2,
+.payment-checkout-screen p {
+  margin: 0.2rem 0 0;
+}
+
+.payment-checkout-screen small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #9fb0c6;
+  overflow-wrap: anywhere;
+}
+
+.payment-gateway-shell {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.85fr) minmax(0, 1.35fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.payment-gateway-summary,
+.payment-gateway-panel {
+  border: 1px solid rgba(92, 133, 190, 0.34);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(18, 170, 255, 0.13), transparent 22rem),
+    linear-gradient(135deg, rgba(13, 43, 75, 0.9), rgba(5, 18, 34, 0.96));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+}
+
+.payment-gateway-summary {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.gateway-brand {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.gateway-brand h2,
+.gateway-panel-head h2 {
+  margin: 0.15rem 0 0;
+  color: #f6f9ff;
+}
+
+.gateway-amount {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid rgba(18, 170, 255, 0.24);
+  border-radius: 0.95rem;
+  background: rgba(0, 145, 255, 0.08);
+}
+
+.gateway-amount span,
+.gateway-order-list dt,
+.gateway-panel-head p,
+.gateway-secure-strip,
+.razorpay-order-card p {
+  color: #aebbd0;
+}
+
+.gateway-amount strong {
+  color: #f6f9ff;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.gateway-order-list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.gateway-order-list div {
+  display: grid;
+  gap: 0.18rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(128, 159, 205, 0.16);
+}
+
+.gateway-order-list div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.gateway-order-list dt,
+.gateway-order-list dd {
+  margin: 0;
+}
+
+.gateway-order-list dd {
+  color: #f6f9ff;
+  overflow-wrap: anywhere;
+}
+
+.gateway-secure-strip,
+.razorpay-order-card {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.85rem;
+  border: 1px solid rgba(53, 225, 160, 0.22);
+  border-radius: 0.9rem;
+  background: rgba(20, 91, 64, 0.24);
+}
+
+.gateway-secure-strip .material-symbols-rounded,
+.razorpay-order-card .material-symbols-rounded {
+  color: #35e1a0;
+}
+
+.payment-gateway-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.gateway-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.gateway-panel-head p {
+  margin: 0.35rem 0 0;
+}
+
+.gateway-badge {
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  color: #35b7ff;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: rgba(0, 145, 255, 0.12);
+}
+
+.payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.payment-method {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+  min-height: 7rem;
+  padding: 1rem;
+  border: 1px solid rgba(128, 159, 205, 0.22);
+  border-radius: 0.95rem;
+  color: #f6f9ff;
+  background: rgba(4, 18, 32, 0.62);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.payment-method:hover,
+.payment-method.is-active {
+  border-color: rgba(18, 170, 255, 0.66);
+  background: rgba(0, 145, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.payment-method .material-symbols-rounded {
+  color: #20b5ff;
+}
+
+.payment-method small {
+  color: #9fb0c6;
+}
+
+.payment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.payment-form-grid .full,
+.payment-gateway-panel .field.full {
+  grid-column: 1 / -1;
+}
+
+.field-error {
+  color: #ff8ca1;
+}
+
+.razorpay-order-card strong {
+  color: #f6f9ff;
+}
+
+.razorpay-order-card p {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.gateway-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.payment-callback-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.25rem;
+}
+
+.payment-callback-card > .material-symbols-rounded {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  color: #35e1a0;
+  background: rgba(34, 197, 122, 0.12);
+}
+
+.payment-callback-card h2,
+.payment-callback-card p {
+  margin: 0.2rem 0 0;
+}
+
+.payment-callback-card p,
+.payment-callback-card small {
+  color: #aebbd0;
+}
+
+.subscription-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.subscription-plan-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.subscription-plan-card.is-premium {
+  border-color: rgba(18, 170, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 22px 70px rgba(0, 95, 180, 0.16);
+}
+
+.subscription-plan-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.subscription-plan-card__head strong {
+  color: #f6f9ff;
+  font-size: 1.3rem;
+  white-space: nowrap;
+}
+
+.subscription-plan-card ul {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.subscription-plan-card li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  color: #c8d6e8;
+}
+
+.subscription-plan-card li .material-symbols-rounded {
+  color: #35e1a0;
+  font-size: 1.05rem;
+}
+
 .primary-button .material-symbols-rounded,
 .ghost-button .material-symbols-rounded {
   font-size: 1.1rem;
@@ -1836,7 +2168,12 @@ input, select, textarea {
   .interview-room-details,
   .interview-summary-list article,
   .interview-command-card__top,
-  .offer-response-panel {
+  .offer-response-panel,
+  .reschedule-request-card,
+  .subscription-status-card,
+  .payment-checkout-card,
+  .payment-callback-card,
+  .payment-gateway-shell {
     grid-template-columns: 1fr;
     align-items: flex-start;
   }
@@ -1865,5 +2202,12 @@ input, select, textarea {
   }
   .resume-row small {
     text-align: left;
+  }
+  .payment-method-grid,
+  .payment-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .gateway-panel-head {
+    display: grid;
   }
 }

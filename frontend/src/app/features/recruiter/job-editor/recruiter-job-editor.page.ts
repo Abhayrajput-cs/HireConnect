@@ -176,7 +176,7 @@ export class RecruiterJobEditorPageComponent {
       salaryMin: Number(raw.salaryMin),
       salaryMax: Number(raw.salaryMax),
       description: raw.description,
-      skills: raw.skillsText.split(',').map((item) => item.trim()).filter(Boolean),
+      skills: this.parseSkills(raw.skillsText),
       experienceRequired: Number(raw.experienceRequired),
       postedBy: this.recruiterProfileId,
       status: raw.status,
@@ -195,6 +195,7 @@ export class RecruiterJobEditorPageComponent {
       error: (error: unknown) => {
         this.errorMessage.set(getErrorMessage(error, 'Unable to save the job.'));
         this.toast.error('Job save failed', this.errorMessage());
+        this.saving.set(false);
       },
       complete: () => this.saving.set(false),
     });
@@ -204,5 +205,18 @@ export class RecruiterJobEditorPageComponent {
     const salaryMin = Number(control.get('salaryMin')?.value ?? 0);
     const salaryMax = Number(control.get('salaryMax')?.value ?? 0);
     return salaryMax >= salaryMin ? null : { salaryRange: true };
+  }
+
+  private parseSkills(value: string): string[] {
+    return value
+      .split(/[\n,;]+/)
+      .flatMap((chunk) => {
+        const trimmed = chunk.trim();
+        return trimmed.length > 80 ? trimmed.split(/\s+/) : trimmed.split(/\s{2,}/);
+      })
+      .map((item) => item.trim())
+      .map((item) => item.slice(0, 80))
+      .filter(Boolean)
+      .slice(0, 30);
   }
 }

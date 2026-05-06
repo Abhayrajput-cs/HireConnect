@@ -53,6 +53,16 @@ public class InterviewResource {
         return ResponseEntity.ok(interviewService.rescheduleInterview(interviewId, request));
     }
 
+    @PatchMapping("/{interviewId}/reschedule/accept")
+    public ResponseEntity<InterviewResponse> acceptReschedule(@PathVariable Integer interviewId) {
+        return ResponseEntity.ok(interviewService.acceptRescheduleRequest(interviewId));
+    }
+
+    @PatchMapping("/{interviewId}/reschedule/decline")
+    public ResponseEntity<InterviewResponse> declineReschedule(@PathVariable Integer interviewId) {
+        return ResponseEntity.ok(interviewService.declineRescheduleRequest(interviewId));
+    }
+
     @DeleteMapping("/{interviewId}")
     public ResponseEntity<Void> cancel(@PathVariable Integer interviewId) {
         interviewService.cancelInterview(interviewId);

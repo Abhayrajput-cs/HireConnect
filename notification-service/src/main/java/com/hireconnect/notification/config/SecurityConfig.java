@@ -42,7 +42,7 @@ public class SecurityConfig {
         http
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health/**", "/actuator/info", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/notifications/**").authenticated()
                 .requestMatchers(HttpMethod.PATCH, "/api/v1/notifications/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/notifications/**").authenticated()

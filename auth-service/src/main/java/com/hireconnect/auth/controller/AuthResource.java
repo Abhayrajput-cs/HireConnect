@@ -14,12 +14,18 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hireconnect.auth.dto.AuthResponse;
+import com.hireconnect.auth.dto.ForgotPasswordRequest;
 import com.hireconnect.auth.dto.LoginRequest;
+import com.hireconnect.auth.dto.MessageResponse;
+import com.hireconnect.auth.dto.RegistrationResponse;
 import com.hireconnect.auth.dto.RefreshTokenRequest;
 import com.hireconnect.auth.dto.RegisterRequest;
+import com.hireconnect.auth.dto.ResendVerificationRequest;
+import com.hireconnect.auth.dto.ResetPasswordRequest;
 import com.hireconnect.auth.dto.TokenValidationRequest;
 import com.hireconnect.auth.dto.TokenValidationResponse;
 import com.hireconnect.auth.dto.UserSummary;
+import com.hireconnect.auth.dto.VerifyEmailRequest;
 import com.hireconnect.auth.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -37,13 +43,33 @@ public class AuthResource {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+    public RegistrationResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/verify-email")
+    public AuthResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return authService.verifyEmail(request);
+    }
+
+    @PostMapping("/resend-verification")
+    public RegistrationResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        return authService.resendVerification(request);
+    }
+
+    @PostMapping("/forgot-password")
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return authService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return authService.resetPassword(request);
     }
 
     @PostMapping("/logout")

@@ -3,6 +3,9 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 
+import { ApplicationResponse } from '../../../core/models/application.models';
+import { InterviewResponse } from '../../../core/models/interview.models';
+import { JobResponse } from '../../../core/models/job.models';
 import { ActivityFeedService } from '../../../core/services/activity-feed.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { InterviewService } from '../../../core/services/interview.service';
@@ -13,10 +16,17 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 import { StatusPillComponent } from '../../../shared/components/status-pill/status-pill.component';
 
 interface CandidateDashboardData {
-  jobs: { jobId: number; title: string; category: string; location: string; status: string }[];
+  jobs: JobResponse[];
   unreadNotifications: number;
-  applications?: unknown[];
+  applications?: ApplicationResponse[];
+  pipeline?: PipelineItem[];
   interviewCount?: number;
+}
+
+interface PipelineItem {
+  application: ApplicationResponse;
+  job: JobResponse | null;
+  interviews: InterviewResponse[];
 }
 
 @Component({
@@ -48,10 +58,114 @@ interface CandidateDashboardData {
         />
       } @else {
         <section class="stats-grid">
-          <app-stat-card icon="JB" label="Open jobs" [value]="stats().jobs" caption="Fresh roles in your feed" />
-          <app-stat-card icon="AP" label="Active applications" [value]="stats().applications" caption="Roles you've applied for" />
-          <app-stat-card icon="IV" label="Interviews scheduled" [value]="stats().interviews" caption="Upcoming interviews" />
-          <app-stat-card icon="NT" label="Unread alerts" [value]="stats().unreadNotifications" caption="Important updates" />
+          <app-stat-card icon="CO" label="Companies applied" [value]="stats().companies" caption="Unique companies in your pipeline" />
+          <app-stat-card icon="OF" label="Offers received" [value]="stats().offers" caption="Applications moved to offer" />
+          <app-stat-card icon="RJ" label="Rejected" [value]="stats().rejections" caption="Applications closed by recruiters" />
+          <app-stat-card icon="IV" label="Interview pipeline" [value]="stats().interviews" caption="Scheduled or confirmed slots" />
+        </section>
+
+        <section class="grid-two">
+          <article class="workspace-panel">
+            <div class="page-header">
+              <div>
+                <span class="eyebrow">Application profile</span>
+                <h2>Where your job search stands</h2>
+              </div>
+              <a class="ghost-button" routerLink="/candidate/applications">View all</a>
+            </div>
+
+            @if (pipeline().length) {
+              <div class="pipeline-meter">
+                <div>
+                  <span>Offer rate</span>
+                  <strong>{{ stats().offerRate }}%</strong>
+                </div>
+                <div>
+                  <span>Active applications</span>
+                  <strong>{{ stats().active }}</strong>
+                </div>
+                <div>
+                  <span>Unread alerts</span>
+                  <strong>{{ stats().unreadNotifications }}</strong>
+                </div>
+              </div>
+
+              <div class="status-breakdown">
+                @for (item of statusBreakdown(); track item.label) {
+                  <div>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count }}</strong>
+                  </div>
+                }
+              </div>
+            } @else {
+              <app-empty-state icon="AP" title="No applications yet" description="Apply to jobs to build your career pipeline dashboard." />
+            }
+          </article>
+
+          <article class="workspace-panel">
+            <div class="page-header">
+              <div>
+                <span class="eyebrow">Companies</span>
+                <h2>Companies you have applied to</h2>
+              </div>
+            </div>
+            @if (companySummaries().length) {
+              <div class="surface-list">
+                @for (company of companySummaries(); track company.name) {
+                  <article class="list-row">
+                    <div class="job-market-card__top">
+                      <span class="company-mark">{{ companyMark(company.name) }}</span>
+                      <div>
+                        <h3>{{ company.name }}</h3>
+                        <p>{{ company.total }} application{{ company.total === 1 ? '' : 's' }}</p>
+                      </div>
+                    </div>
+                    <div class="company-status-strip">
+                      <span>{{ company.offers }} offers</span>
+                      <span>{{ company.rejections }} rejected</span>
+                    </div>
+                  </article>
+                }
+              </div>
+            } @else {
+              <app-empty-state icon="CO" title="No companies yet" description="Companies will appear here once you start applying." />
+            }
+          </article>
+        </section>
+
+        <section class="workspace-panel">
+          <div class="page-header">
+            <div>
+              <span class="eyebrow">Live pipeline</span>
+              <h2>Your applications by company</h2>
+            </div>
+            <a class="primary-button" routerLink="/candidate/jobs">Apply more</a>
+          </div>
+
+          @if (pipeline().length) {
+            <div class="surface-list">
+              @for (item of pipeline(); track item.application.applicationId) {
+                <article class="list-row application-row">
+                  <div class="job-market-card__top">
+                    <span class="company-mark">{{ companyMark(companyName(item)) }}</span>
+                    <div>
+                      <h3>{{ item.job?.title || 'Role unavailable' }}</h3>
+                      <p>{{ companyName(item) }} | {{ item.job?.location || 'Location unavailable' }}</p>
+                      <small>Applied {{ item.application.appliedAt | date:'mediumDate' }}</small>
+                    </div>
+                  </div>
+                  <div class="application-row__meta">
+                    <app-status-pill [label]="item.application.status" />
+                    <span>{{ item.interviews.length }} interview{{ item.interviews.length === 1 ? '' : 's' }}</span>
+                    <a class="ghost-button" [routerLink]="['/candidate/jobs', item.application.jobId]">View role</a>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <app-empty-state icon="AP" title="Your pipeline is empty" description="Browse jobs and apply to start tracking company-wise progress." />
+          }
         </section>
 
         <section class="grid-two">
@@ -59,7 +173,7 @@ interface CandidateDashboardData {
             <div class="page-header">
               <div>
                 <span class="eyebrow">Recommended for you</span>
-                <h2>Curated roles that match your profile</h2>
+                <h2>Fresh open jobs</h2>
               </div>
               <a class="ghost-button" routerLink="/candidate/jobs">See all jobs</a>
             </div>
@@ -68,98 +182,29 @@ interface CandidateDashboardData {
                 @for (job of recentJobs(); track job.jobId) {
                   <article class="list-row">
                     <div class="job-market-card__top">
-                      <span class="company-mark">{{ companyMark(job.title) }}</span>
+                      <span class="company-mark">{{ companyMark(job.companyName || job.title) }}</span>
                       <div>
                         <h3>{{ job.title }}</h3>
-                        <p>{{ job.category }} in {{ job.location }}</p>
+                        <p>{{ job.companyName || 'Company not added' }} | {{ job.location }}</p>
                       </div>
                     </div>
-                    <div class="button-row">
-                      <app-status-pill [label]="job.status" />
-                      <a class="ghost-button" [routerLink]="['/candidate/jobs', job.jobId]">
-                        View job
-                        <span class="material-symbols-rounded">arrow_forward</span>
-                      </a>
-                    </div>
+                    <a class="ghost-button" [routerLink]="['/candidate/jobs', job.jobId]">View</a>
                   </article>
                 }
               </div>
             } @else {
-              <app-empty-state icon="JB" title="No jobs yet" description="Once open roles are available, they will show up here." />
+              <app-empty-state icon="JB" title="No open jobs" description="Open roles will appear here when recruiters publish them." />
             }
           </article>
 
           <article class="workspace-panel">
             <div class="page-header">
               <div>
-                <span class="eyebrow">Quick actions</span>
-                <h2>Everything you need to stay ahead</h2>
+                <span class="eyebrow">Next step</span>
+                <h2>{{ nextStepTitle() }}</h2>
+                <p>{{ nextStepDescription() }}</p>
               </div>
-            </div>
-            <div class="quick-action-grid">
-              <a class="quick-action" routerLink="/candidate/profile">
-                <span class="material-symbols-rounded">manage_accounts</span>
-                <div>
-                  <strong>Update profile</strong>
-                  <small>Keep your profile fresh</small>
-                </div>
-              </a>
-              <a class="quick-action" routerLink="/candidate/profile">
-                <span class="material-symbols-rounded">upload</span>
-                <div>
-                  <strong>Upload resume</strong>
-                  <small>Improve visibility</small>
-                </div>
-              </a>
-              <a class="quick-action" routerLink="/candidate/applications">
-                <span class="material-symbols-rounded">fact_check</span>
-                <div>
-                  <strong>Track applications</strong>
-                  <small>Monitor your pipeline</small>
-                </div>
-              </a>
-              <a class="quick-action" routerLink="/candidate/bookmarks">
-                <span class="material-symbols-rounded">bookmark_search</span>
-                <div>
-                  <strong>Saved searches</strong>
-                  <small>View saved roles</small>
-                </div>
-              </a>
-            </div>
-          </article>
-        </section>
-
-        <section class="grid-two">
-          <article class="workspace-panel">
-            <div class="page-header">
-              <div>
-                <span class="eyebrow">Saved roles</span>
-                <h2>Roles you've saved for later</h2>
-              </div>
-              <a class="ghost-button" routerLink="/candidate/bookmarks">View all</a>
-            </div>
-            <div class="surface-list">
-              <article class="list-row">
-                <div class="job-market-card__top">
-                  <span class="company-mark">HC</span>
-                  <div>
-                    <h3>Frontend Developer</h3>
-                    <p>DreamSports | Gurugram</p>
-                  </div>
-                </div>
-                <strong>Saved recently</strong>
-              </article>
-            </div>
-          </article>
-
-          <article class="workspace-panel">
-            <div class="page-header">
-              <div>
-                <span class="eyebrow">Career boost</span>
-                <h2>Keep your profile current</h2>
-                <p>Update your resume, skills, and contact details so recruiters see accurate information.</p>
-              </div>
-              <a class="primary-button" routerLink="/candidate/profile">Continue</a>
+              <a class="primary-button" [routerLink]="nextStepLink()">Continue</a>
             </div>
           </article>
         </section>
@@ -175,8 +220,21 @@ export class CandidateDashboardPageComponent {
   private readonly activityFeed = inject(ActivityFeedService);
 
   protected readonly hasProfile = signal(false);
-  protected readonly stats = signal({ jobs: 0, applications: 0, interviews: 0, unreadNotifications: 0 });
-  protected readonly recentJobs = signal<{ jobId: number; title: string; category: string; location: string; status: string }[]>([]);
+  protected readonly stats = signal({
+    jobs: 0,
+    applications: 0,
+    companies: 0,
+    offers: 0,
+    rejections: 0,
+    active: 0,
+    interviews: 0,
+    unreadNotifications: 0,
+    offerRate: 0,
+  });
+  protected readonly recentJobs = signal<JobResponse[]>([]);
+  protected readonly pipeline = signal<PipelineItem[]>([]);
+  protected readonly statusBreakdown = signal<{ label: string; count: number }[]>([]);
+  protected readonly companySummaries = signal<{ name: string; total: number; offers: number; rejections: number }[]>([]);
   protected readonly userName = signal('Tester');
 
   constructor() {
@@ -202,18 +260,29 @@ export class CandidateDashboardPageComponent {
         }).pipe(
           switchMap((result) => {
             if (!result.applications.length) {
-              return of({ ...result, unreadNotifications: result.activity.filter((item) => !item.isRead).length, interviewCount: 0 });
+              return of({
+                ...result,
+                pipeline: [] as PipelineItem[],
+                unreadNotifications: result.activity.filter((item) => !item.isRead).length,
+                interviewCount: 0,
+              });
             }
             return forkJoin(
               result.applications.map((application) =>
-                this.interviews.getByApplication(application.applicationId).pipe(catchError(() => of([]))),
+                forkJoin({
+                  job: this.jobs.getJob(application.jobId).pipe(catchError(() => of(null))),
+                  interviews: this.interviews.getByApplication(application.applicationId).pipe(catchError(() => of([] as InterviewResponse[]))),
+                }).pipe(
+                  switchMap(({ job, interviews }) => of({ application, job, interviews })),
+                ),
               ),
             ).pipe(
-              switchMap((allInterviews) =>
+              switchMap((pipeline) =>
                 of({
                   ...result,
+                  pipeline,
                   unreadNotifications: result.activity.filter((item) => !item.isRead).length,
-                  interviewCount: allInterviews.flat().length,
+                  interviewCount: pipeline.flatMap((item) => item.interviews).length,
                 }),
               ),
             );
@@ -222,11 +291,24 @@ export class CandidateDashboardPageComponent {
       }),
     ).subscribe((result: CandidateDashboardData) => {
       this.recentJobs.set((result.jobs ?? []).slice(0, 4));
+      this.pipeline.set(result.pipeline ?? []);
+      this.statusBreakdown.set(this.buildStatusBreakdown(result.pipeline ?? []));
+      this.companySummaries.set(this.buildCompanySummaries(result.pipeline ?? []));
+      const applications = result.pipeline ?? [];
+      const offers = applications.filter((item) => this.isOfferStatus(item.application.status)).length;
+      const rejections = applications.filter((item) => item.application.status === 'REJECTED').length;
+      const active = applications.filter((item) => this.isActiveStatus(item.application.status)).length;
+      const companyCount = new Set(applications.map((item) => this.companyName(item))).size;
       this.stats.set({
         jobs: (result.jobs ?? []).length,
-        applications: Array.isArray(result.applications) ? result.applications.length : 0,
+        applications: applications.length,
+        companies: companyCount,
+        offers,
+        rejections,
+        active,
         interviews: typeof result.interviewCount === 'number' ? result.interviewCount : 0,
         unreadNotifications: result.unreadNotifications ?? 0,
+        offerRate: applications.length ? Math.round((offers / applications.length) * 100) : 0,
       });
     });
   }
@@ -239,5 +321,84 @@ export class CandidateDashboardPageComponent {
       .map((part) => part[0])
       .join('')
       .toUpperCase();
+  }
+
+  protected companyName(item: PipelineItem): string {
+    return item.job?.companyName || `Company ${item.job?.postedBy ?? item.application.jobId}`;
+  }
+
+  protected nextStepTitle(): string {
+    if (this.stats().offers > 0) {
+      return 'Review your offers';
+    }
+    if (this.stats().interviews > 0) {
+      return 'Prepare for interviews';
+    }
+    if (this.stats().applications > 0) {
+      return 'Keep applying strategically';
+    }
+    return 'Start your application pipeline';
+  }
+
+  protected nextStepDescription(): string {
+    if (this.stats().offers > 0) {
+      return 'Open your applications to accept or decline offers from recruiters.';
+    }
+    if (this.stats().interviews > 0) {
+      return 'Confirm slots, join online rooms, and manage reschedule requests.';
+    }
+    if (this.stats().applications > 0) {
+      return 'Track decisions while adding more well-matched companies to your list.';
+    }
+    return 'Browse jobs and apply so this dashboard can track companies, interviews, offers, and rejections.';
+  }
+
+  protected nextStepLink(): string {
+    if (this.stats().interviews > 0) {
+      return '/candidate/interviews';
+    }
+    if (this.stats().applications > 0 || this.stats().offers > 0) {
+      return '/candidate/applications';
+    }
+    return '/candidate/jobs';
+  }
+
+  private buildStatusBreakdown(pipeline: PipelineItem[]): { label: string; count: number }[] {
+    const statuses = ['APPLIED', 'SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFERED', 'REJECTED', 'OFFER_ACCEPTED', 'OFFER_DECLINED'];
+    return statuses
+      .map((status) => ({
+        label: this.formatStatus(status),
+        count: pipeline.filter((item) => item.application.status === status).length,
+      }))
+      .filter((item) => item.count > 0);
+  }
+
+  private buildCompanySummaries(pipeline: PipelineItem[]): { name: string; total: number; offers: number; rejections: number }[] {
+    const summaries = new Map<string, { name: string; total: number; offers: number; rejections: number }>();
+    pipeline.forEach((item) => {
+      const name = this.companyName(item);
+      const summary = summaries.get(name) ?? { name, total: 0, offers: 0, rejections: 0 };
+      summary.total += 1;
+      summary.offers += this.isOfferStatus(item.application.status) ? 1 : 0;
+      summary.rejections += item.application.status === 'REJECTED' ? 1 : 0;
+      summaries.set(name, summary);
+    });
+    return Array.from(summaries.values()).sort((a, b) => b.total - a.total).slice(0, 5);
+  }
+
+  private isOfferStatus(status: string): boolean {
+    return ['OFFERED', 'OFFER_ACCEPTED', 'OFFER_DECLINED'].includes(status);
+  }
+
+  private isActiveStatus(status: string): boolean {
+    return ['APPLIED', 'SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFERED'].includes(status);
+  }
+
+  private formatStatus(status: string): string {
+    return status
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   }
 }

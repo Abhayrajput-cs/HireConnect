@@ -13,8 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.hireconnect.notification.client.JobServiceClient;
+import com.hireconnect.notification.client.JobSnapshot;
 import com.hireconnect.notification.client.ProfileServiceClient;
 import com.hireconnect.notification.client.ProfileSnapshot;
 import com.hireconnect.notification.config.MailProperties;
@@ -33,6 +36,8 @@ import com.hireconnect.notification.exception.ApiException;
 import com.hireconnect.notification.repository.ApplicationMetricRepository;
 import com.hireconnect.notification.repository.NotificationRepository;
 
+import jakarta.mail.internet.MimeMessage;
+
 @Service
 @Transactional
 public class NotificationServiceImpl implements NotificationService {
@@ -42,21 +47,27 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final ApplicationMetricRepository applicationMetricRepository;
     private final ProfileServiceClient profileServiceClient;
+    private final JobServiceClient jobServiceClient;
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final MailProperties mailProperties;
+    private final OfferLetterPdfService offerLetterPdfService;
 
     public NotificationServiceImpl(
         NotificationRepository notificationRepository,
         ApplicationMetricRepository applicationMetricRepository,
         ProfileServiceClient profileServiceClient,
+        JobServiceClient jobServiceClient,
         ObjectProvider<JavaMailSender> mailSenderProvider,
-        MailProperties mailProperties
+        MailProperties mailProperties,
+        OfferLetterPdfService offerLetterPdfService
     ) {
         this.notificationRepository = notificationRepository;
         this.applicationMetricRepository = applicationMetricRepository;
         this.profileServiceClient = profileServiceClient;
+        this.jobServiceClient = jobServiceClient;
         this.mailSenderProvider = mailSenderProvider;
         this.mailProperties = mailProperties;
+        this.offerLetterPdfService = offerLetterPdfService;
     }
 
     @Override
@@ -83,6 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         if (mailProperties.enabled() && StringUtils.hasText(event.getEmailSubject())) {
+            OfferLetterAttachment offerLetter = buildOfferLetterIfNeeded(event);
             for (String email : recipients.emails()) {
                 if (!StringUtils.hasText(email)) {
                     continue;
@@ -90,7 +102,8 @@ public class NotificationServiceImpl implements NotificationService {
                 sendEmailAlert(
                     email,
                     event.getEmailSubject(),
-                    StringUtils.hasText(event.getEmailBody()) ? event.getEmailBody() : event.getMessage()
+                    StringUtils.hasText(event.getEmailBody()) ? event.getEmailBody() : event.getMessage(),
+                    offerLetter
                 );
             }
         }
@@ -140,6 +153,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendEmailAlert(String toEmail, String subject, String body) {
+        sendEmailAlert(toEmail, subject, body, null);
+    }
+
+    private void sendEmailAlert(String toEmail, String subject, String body, OfferLetterAttachment attachment) {
         if (!mailProperties.enabled()) {
             return;
         }
@@ -150,15 +167,103 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(mailProperties.from());
-            message.setTo(toEmail);
-            message.setSubject(subject);
-            message.setText(body);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailProperties.from());
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(buildPlainTextEmail(body), buildHtmlEmail(subject, body));
+            if (attachment != null && attachment.content() != null && attachment.content().length > 0) {
+                helper.addAttachment(
+                    attachment.filename(),
+                    new ByteArrayResource(attachment.content()),
+                    "application/pdf"
+                );
+            }
             mailSender.send(message);
         } catch (Exception ex) {
             LOGGER.warn("Failed to send email notification to {}: {}", toEmail, ex.getMessage());
         }
+    }
+
+    private OfferLetterAttachment buildOfferLetterIfNeeded(NotificationEvent event) {
+        String eventType = normalizeValue(event.getEventType(), "");
+        String status = normalizeValue(event.getStatus(), "");
+        if (!"APPLICATION_OFFERED".equals(eventType) && !"OFFERED".equals(status)) {
+            return null;
+        }
+        if (event.getCandidateId() == null || event.getRecruiterId() == null || event.getJobId() == null) {
+            LOGGER.warn("Offer letter attachment skipped because offer event is missing candidate, recruiter, or job id");
+            return null;
+        }
+        try {
+            ProfileSnapshot candidate = profileServiceClient.getProfileById(event.getCandidateId());
+            ProfileSnapshot recruiter = profileServiceClient.getProfileById(event.getRecruiterId());
+            JobSnapshot job = jobServiceClient.getJob(event.getJobId());
+            if (candidate == null || job == null) {
+                LOGGER.warn("Offer letter attachment skipped because candidate or job details were unavailable");
+                return null;
+            }
+            return offerLetterPdfService.build(candidate, recruiter, job);
+        } catch (Exception ex) {
+            LOGGER.warn("Offer letter attachment could not be generated for application {}: {}", event.getApplicationId(), ex.getMessage());
+            return null;
+        }
+    }
+
+    private String buildPlainTextEmail(String body) {
+        return """
+            HireConnect
+
+            %s
+
+            Open your HireConnect workspace for full details.
+            """.formatted(body == null ? "" : body);
+    }
+
+    private String buildHtmlEmail(String subject, String body) {
+        String safeSubject = escapeHtml(subject == null ? "HireConnect update" : subject);
+        String safeBody = escapeHtml(body == null ? "" : body).replace("\n", "<br>");
+        return """
+            <!doctype html>
+            <html>
+              <body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#102033;">
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:28px 0;">
+                  <tr>
+                    <td align="center">
+                      <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="width:620px;max-width:92%%;background:#ffffff;border:1px solid #dce6f2;border-radius:18px;overflow:hidden;box-shadow:0 18px 45px rgba(16,32,51,.08);">
+                        <tr>
+                          <td style="background:#06172b;padding:26px 30px;color:#ffffff;">
+                            <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#23b7ff;font-weight:700;">HireConnect workspace</div>
+                            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.25;">%s</h1>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:30px;">
+                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#24364b;">%s</p>
+                            <a href="http://localhost:4200" style="display:inline-block;background:#0f8cff;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:10px;">Open HireConnect</a>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:18px 30px;background:#f8fbff;color:#6b7b91;font-size:12px;line-height:1.5;">
+                            This automated email was sent by HireConnect. Keep your workspace open for notifications, interview updates, and application decisions.
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </body>
+            </html>
+            """.formatted(safeSubject, safeBody);
+    }
+
+    private String escapeHtml(String value) {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;");
     }
 
     @Override

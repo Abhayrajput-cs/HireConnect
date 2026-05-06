@@ -11,5 +11,7 @@ export const RECRUITER_ROUTES: Routes = [
   { path: 'interviews/:interviewId/join', loadComponent: () => import('../interviews/interview-room/interview-room.page').then((m) => m.InterviewRoomPageComponent) },
   { path: 'analytics', loadComponent: () => import('./analytics/recruiter-analytics.page').then((m) => m.RecruiterAnalyticsPageComponent) },
   { path: 'notifications', loadComponent: () => import('./notifications/recruiter-notifications.page').then((m) => m.RecruiterNotificationsPageComponent) },
+  { path: 'subscription', loadComponent: () => import('../subscription/subscription.page').then((m) => m.SubscriptionPageComponent) },
+  { path: 'subscription/checkout', loadComponent: () => import('../subscription/payment-checkout.page').then((m) => m.PaymentCheckoutPageComponent) },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 ];

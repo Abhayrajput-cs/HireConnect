@@ -299,29 +299,7 @@ class NotificationServiceIntegrationTest {
             };
         }
 
-        @Bean
-        @Primary
-        JobServiceClient jobServiceClient() {
-            return new JobServiceClient(new org.springframework.web.client.RestTemplate(), "http://localhost:8085") {
-                @Override
-                public List<JobSnapshot> getAllJobs() {
-                    return List.of(new JobSnapshot(701, "Senior Java Developer", "Engineering", 401, "OPEN", LocalDate.of(2026, 4, 20)));
-                }
-
-                @Override
-                public List<JobSnapshot> getJobsByRecruiter(Integer recruiterId) {
-                    if (recruiterId == 401) {
-                        return getAllJobs();
-                    }
-                    return List.of();
-                }
-
-                @Override
-                public JobSnapshot getJob(Integer jobId) {
-                    return new JobSnapshot(701, "Senior Java Developer", "Engineering", 401, "OPEN", LocalDate.of(2026, 4, 20));
-                }
-            };
-        }
+      
 
         @Bean
         @Primary

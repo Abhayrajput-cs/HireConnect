@@ -37,9 +37,11 @@ public class AdminAccountInitializer implements ApplicationRunner {
             .orElseGet(() -> {
                 UserCredential admin = new UserCredential();
                 admin.setEmail(properties.email().trim().toLowerCase());
+                admin.setFullName("HireConnect Admin");
                 admin.setPasswordHash(passwordEncoder.encode(properties.password()));
                 admin.setRole("ADMIN");
                 admin.setProvider("LOCAL");
+                admin.setEmailVerified(true);
                 return authRepository.save(admin);
             });
     }

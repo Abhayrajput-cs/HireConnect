@@ -11,7 +11,9 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { InterviewService } from '../../../core/services/interview.service';
 import { JobService } from '../../../core/services/job.service';
 import { ProfileService } from '../../../core/services/profile.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { ViewerProfileService } from '../../../core/services/viewer-profile.service';
+import { getErrorMessage } from '../../../core/utils/http-error.util';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { StatusPillComponent } from '../../../shared/components/status-pill/status-pill.component';
@@ -72,6 +74,23 @@ interface RecruiterInterviewView {
                 </div>
               </div>
 
+              @if (item.interview.status === 'RESCHEDULE_REQUESTED') {
+                <section class="reschedule-request-card">
+                  <span class="material-symbols-rounded">event_repeat</span>
+                  <div>
+                    <strong>Candidate requested a reschedule</strong>
+                    <p>Requested time: {{ item.interview.requestedScheduledAt ? (item.interview.requestedScheduledAt | date:'medium') : 'Not provided' }}</p>
+                    @if (item.interview.requestedNotes) {
+                      <p>Reason: {{ item.interview.requestedNotes }}</p>
+                    }
+                  </div>
+                  <div class="button-row">
+                    <button class="primary-button" type="button" (click)="acceptReschedule(item.interview.interviewId)">Accept</button>
+                    <button class="ghost-button" type="button" (click)="declineReschedule(item.interview.interviewId)">Decline</button>
+                  </div>
+                </section>
+              }
+
               <div class="button-row">
                 <a class="primary-button" [routerLink]="['/recruiter/interviews', item.interview.interviewId, 'join']">
                   <span class="material-symbols-rounded">open_in_new</span>
@@ -97,11 +116,32 @@ export class RecruiterInterviewsPageComponent {
   private readonly applications = inject(ApplicationService);
   private readonly interviewsService = inject(InterviewService);
   private readonly profiles = inject(ProfileService);
+  private readonly toast = inject(ToastService);
 
   protected readonly interviews = signal<RecruiterInterviewView[]>([]);
 
   constructor() {
     this.load();
+  }
+
+  protected acceptReschedule(interviewId: number): void {
+    this.interviewsService.acceptReschedule(interviewId).subscribe({
+      next: () => {
+        this.toast.success('Reschedule accepted', 'The interview now uses the candidate requested slot.');
+        this.load();
+      },
+      error: (error: unknown) => this.toast.error('Update failed', getErrorMessage(error, 'Unable to accept the reschedule request.')),
+    });
+  }
+
+  protected declineReschedule(interviewId: number): void {
+    this.interviewsService.declineReschedule(interviewId).subscribe({
+      next: () => {
+        this.toast.success('Reschedule declined', 'The original interview schedule remains active.');
+        this.load();
+      },
+      error: (error: unknown) => this.toast.error('Update failed', getErrorMessage(error, 'Unable to decline the reschedule request.')),
+    });
   }
 
   private load(): void {

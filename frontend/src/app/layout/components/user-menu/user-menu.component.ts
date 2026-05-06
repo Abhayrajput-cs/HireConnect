@@ -13,7 +13,7 @@ import { SessionService } from '../../../core/services/session.service';
       <button type="button" class="user-menu__trigger" (click)="open.update((value) => !value)">
         <span class="user-menu__avatar">{{ initials() }}</span>
         <span class="user-menu__identity">
-          <strong>{{ session.user()?.email }}</strong>
+          <strong>{{ displayName() }}</strong>
           <small>{{ roleSubtitle() }}</small>
         </span>
         <span class="user-menu__role">{{ session.role() }}</span>
@@ -22,7 +22,8 @@ import { SessionService } from '../../../core/services/session.service';
       @if (open()) {
         <div class="user-menu__panel card-shell">
           <div class="user-menu__meta">
-            <strong>{{ session.user()?.email }}</strong>
+            <strong>{{ displayName() }}</strong>
+            <span>{{ session.user()?.email }}</span>
             <small>{{ roleLabel() }}</small>
           </div>
           <button type="button" (click)="auth.logout().subscribe()">Logout</button>
@@ -109,7 +110,19 @@ export class UserMenuComponent {
   protected readonly open = signal(false);
 
   protected initials(): string {
-    return (this.session.user()?.email ?? 'HC').slice(0, 2).toUpperCase();
+    const name = this.displayName();
+    return name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'HC';
+  }
+
+  protected displayName(): string {
+    const user = this.session.user();
+    return user?.fullName || user?.email || 'HireConnect';
   }
 
   protected roleLabel(): string {

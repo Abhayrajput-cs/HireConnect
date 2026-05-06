@@ -10,6 +10,10 @@ public record InterviewResponse(
     String meetLink,
     String location,
     String status,
-    String notes
+    String notes,
+    LocalDateTime requestedScheduledAt,
+    String requestedMeetLink,
+    String requestedLocation,
+    String requestedNotes
 ) {
 }
