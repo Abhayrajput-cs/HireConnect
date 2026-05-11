@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -35,5 +35,12 @@ export class NotificationService {
 
   getUnreadCount(userId: number): Observable<number> {
     return this.http.get<number>(`${API_ENDPOINTS.notifications}/user/${userId}/unread-count`);
+  }
+
+  downloadOfferLetter(applicationId: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${API_ENDPOINTS.notifications}/offer-letters/${applicationId}`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 }

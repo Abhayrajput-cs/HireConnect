@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
+import { Observable, catchError, finalize, of, shareReplay, tap } from 'rxjs';
 
 import { ProfileResponse } from '../models/profile.models';
 import { ProfileService } from './profile.service';
@@ -17,6 +17,7 @@ export class ViewerProfileService {
   getCurrentProfile(force = false): Observable<ProfileResponse | null> {
     const email = this.session.user()?.email ?? null;
     if (!email) {
+      this.clearCache();
       return of(null);
     }
 
@@ -28,21 +29,24 @@ export class ViewerProfileService {
       return this.inFlight$;
     }
 
-    this.cacheEmail = email;
+    const requestedEmail = email.toLowerCase();
+    this.cacheEmail = requestedEmail;
+    if (force) {
+      this.cachedProfile = null;
+    }
+
     this.inFlight$ = this.profiles.getProfileByEmail(email).pipe(
-      catchError((error: unknown) => {
-        return this.profiles.getProfiles().pipe(
-          map((profiles) => profiles.find((profile) => profile.email.toLowerCase() === email.toLowerCase()) ?? null),
-          catchError(() => {
-            return of(null);
-          }),
-        );
-      }),
+      catchError(() => of(null)),
       tap((profile) => {
-        this.cachedProfile = profile;
+        const currentEmail = this.session.user()?.email?.toLowerCase() ?? null;
+        if (currentEmail === requestedEmail && this.cacheEmail === requestedEmail) {
+          this.cachedProfile = profile;
+        }
       }),
       finalize(() => {
-        this.inFlight$ = null;
+        if (this.cacheEmail === requestedEmail) {
+          this.inFlight$ = null;
+        }
       }),
       shareReplay(1),
     );
@@ -51,7 +55,7 @@ export class ViewerProfileService {
   }
 
   setCurrentProfile(profile: ProfileResponse | null): void {
-    this.cacheEmail = profile?.email ?? this.session.user()?.email ?? null;
+    this.cacheEmail = (profile?.email ?? this.session.user()?.email ?? null)?.toLowerCase() ?? null;
     this.cachedProfile = profile;
     this.inFlight$ = null;
   }

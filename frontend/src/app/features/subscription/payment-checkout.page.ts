@@ -152,6 +152,11 @@ export class PaymentCheckoutPageComponent implements AfterViewInit {
         name: 'HireConnect',
         description: order.planType,
         order_id: order.gatewayOrderId,
+        prefill: {
+          name: order.customerName,
+          email: order.customerEmail,
+          contact: order.customerPhone,
+        },
         theme: { color: '#0ea5ff' },
         handler: (response: RazorpayCheckoutResponse) => this.verify(order, response),
         modal: {
@@ -216,8 +221,15 @@ export class PaymentCheckoutPageComponent implements AfterViewInit {
   private readOrder(): CreateOrderResponse | null {
     try {
       const raw = window.sessionStorage.getItem('hireconnect.pendingPaymentOrder');
-      return raw ? JSON.parse(raw) as CreateOrderResponse : null;
+      const order = raw ? JSON.parse(raw) as CreateOrderResponse : null;
+      const currentEmail = this.session.user()?.email?.toLowerCase();
+      if (order && currentEmail && order.customerEmail?.toLowerCase() !== currentEmail) {
+        window.sessionStorage.removeItem('hireconnect.pendingPaymentOrder');
+        return null;
+      }
+      return order;
     } catch {
+      window.sessionStorage.removeItem('hireconnect.pendingPaymentOrder');
       return null;
     }
   }

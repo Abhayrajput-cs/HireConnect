@@ -7,6 +7,7 @@ import { ApplicationResponse } from '../../../core/models/application.models';
 import { JobResponse } from '../../../core/models/job.models';
 import { ApplicationService } from '../../../core/services/application.service';
 import { JobService } from '../../../core/services/job.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ViewerProfileService } from '../../../core/services/viewer-profile.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -47,7 +48,6 @@ interface CandidateApplicationView {
                 <div class="job-market-card__top">
                   <span class="company-mark">{{ companyMark(item.job?.title ?? 'HC') }}</span>
                   <div>
-                    <span class="eyebrow">Application #{{ item.application.applicationId }}</span>
                     <h2>{{ item.job?.title ?? 'Unknown job' }}</h2>
                     <p>{{ item.job?.location ?? 'Unavailable' }} | Applied on {{ item.application.appliedAt | date:'mediumDate' }}</p>
                   </div>
@@ -65,6 +65,7 @@ interface CandidateApplicationView {
                     <p>Review the opportunity and respond to the offer from your candidate workspace.</p>
                   </div>
                   <div class="button-row">
+                    <button class="ghost-button" type="button" (click)="downloadOfferLetter(item.application.applicationId)">Download letter</button>
                     <button class="primary-button" type="button" (click)="acceptOffer(item.application.applicationId)">Accept offer</button>
                     <button class="ghost-button" type="button" (click)="declineOffer(item.application.applicationId)">Decline offer</button>
                   </div>
@@ -77,6 +78,7 @@ interface CandidateApplicationView {
                     <h3>Offer accepted</h3>
                     <p>You accepted this offer. The recruiter can now continue with onboarding.</p>
                   </div>
+                  <button class="ghost-button" type="button" (click)="downloadOfferLetter(item.application.applicationId)">Download letter</button>
                 </section>
               }
               @if (item.application.status === 'OFFER_DECLINED') {
@@ -109,6 +111,7 @@ export class CandidateApplicationsPageComponent {
   private readonly viewerProfile = inject(ViewerProfileService);
   private readonly applicationsService = inject(ApplicationService);
   private readonly jobs = inject(JobService);
+  private readonly notifications = inject(NotificationService);
   private readonly toast = inject(ToastService);
 
   protected readonly applications = signal<CandidateApplicationView[]>([]);
@@ -156,6 +159,26 @@ export class CandidateApplicationsPageComponent {
     });
   }
 
+  protected downloadOfferLetter(applicationId: number): void {
+    this.notifications.downloadOfferLetter(applicationId).subscribe({
+      next: (response) => {
+        const blob = response.body;
+        if (!blob) {
+          this.toast.error('Download failed', 'Offer letter file was empty.');
+          return;
+        }
+        const filename = this.offerLetterFilename(response.headers.get('content-disposition'));
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.toast.error('Download failed', 'Unable to download the offer letter right now.'),
+    });
+  }
+
   private load(): void {
     this.viewerProfile.getCurrentProfile().pipe(
       switchMap((profile) => {
@@ -183,5 +206,10 @@ export class CandidateApplicationsPageComponent {
         );
       }),
     ).subscribe((applications) => this.applications.set(applications));
+  }
+
+  private offerLetterFilename(contentDisposition: string | null): string {
+    const match = contentDisposition?.match(/filename="?([^"]+)"?/i);
+    return match?.[1] ?? 'offer-letter.pdf';
   }
 }

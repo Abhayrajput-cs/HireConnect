@@ -114,16 +114,23 @@ export class TopbarComponent {
           catchError(() => of([] as ActivityItem[])),
         );
       }),
-    ).subscribe((items) => {
-      const unread = items.filter((item) => !item.isRead);
-      const previous = this.lastUnreadIds();
-      const fresh = unread.find((item) => !previous.has(item.id));
-      this.notifications.set(items);
-      this.lastUnreadIds.set(new Set(unread.map((item) => item.id)));
-      if (fresh && this.hasLoadedNotifications) {
-        this.toast.info('New notification', fresh.message);
-      }
-      this.hasLoadedNotifications = true;
+      catchError(() => of([] as ActivityItem[])),
+    ).subscribe({
+      next: (items) => {
+        const unread = items.filter((item) => !item.isRead);
+        const previous = this.lastUnreadIds();
+        const fresh = unread.find((item) => !previous.has(item.id));
+        this.notifications.set(items);
+        this.lastUnreadIds.set(new Set(unread.map((item) => item.id)));
+        if (fresh && this.hasLoadedNotifications) {
+          this.toast.info('New notification', fresh.message);
+        }
+        this.hasLoadedNotifications = true;
+      },
+      error: () => {
+        this.notifications.set([]);
+        this.hasLoadedNotifications = true;
+      },
     });
   }
 

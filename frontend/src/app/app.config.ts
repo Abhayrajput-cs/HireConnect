@@ -5,13 +5,14 @@ import { provideRouter, withInMemoryScrolling, withViewTransitions } from '@angu
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
+import { serviceHealthInterceptor } from './core/interceptors/service-health.interceptor';
 import { AuthService } from './core/services/auth.service';
 import { ThemeService } from './core/services/theme.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(withInterceptors([loadingInterceptor, authInterceptor])),
+    provideHttpClient(withInterceptors([loadingInterceptor, serviceHealthInterceptor, authInterceptor])),
     provideRouter(
       routes,
       withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' }),

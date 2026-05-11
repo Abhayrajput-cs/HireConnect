@@ -36,6 +36,7 @@ export interface CreateOrderRequest {
 
 export interface CreateOrderResponse {
   orderId: string;
+  userId: number;
   gatewayOrderId: string | null;
   razorpayKeyId: string | null;
   amountInPaise: number | null;
@@ -43,6 +44,9 @@ export interface CreateOrderResponse {
   amount: number;
   currency: string;
   paymentStatus: PaymentStatus;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
 }
 
 export interface VerifyPaymentRequest {

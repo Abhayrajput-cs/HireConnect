@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
 import { PaymentRole, SubscriptionPlanResponse, SubscriptionStatusResponse } from '../../core/models/payment.models';
+import { ProfileResponse } from '../../core/models/profile.models';
 import { PaymentService } from '../../core/services/payment.service';
 import { SessionService } from '../../core/services/session.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -83,6 +84,7 @@ export class SubscriptionPageComponent {
   protected readonly plans = signal<SubscriptionPlanResponse[]>([]);
   protected readonly status = signal<SubscriptionStatusResponse | null>(null);
   protected readonly profileId = signal<number | null>(null);
+  protected readonly profile = signal<ProfileResponse | null>(null);
   protected readonly loadingPlan = signal<string | null>(null);
   protected readonly role = computed<PaymentRole>(() => this.session.role() === 'RECRUITER' ? 'RECRUITER' : 'CANDIDATE');
 
@@ -92,9 +94,14 @@ export class SubscriptionPageComponent {
 
   protected choose(plan: SubscriptionPlanResponse): void {
     const profileId = this.profileId();
+    const profile = this.profile();
     const user = this.session.user();
-    if (!profileId || !user) {
+    if (!profileId || !profile || !user) {
       this.toast.error('Profile required', 'Create your profile before choosing a subscription.');
+      return;
+    }
+    if (!profile.mobile) {
+      this.toast.error('Mobile required', 'Add a valid mobile number to your profile before payment.');
       return;
     }
     this.loadingPlan.set(plan.planType);
@@ -102,9 +109,9 @@ export class SubscriptionPageComponent {
       userId: profileId,
       role: this.role(),
       planType: plan.planType,
-      customerName: user.fullName || user.email.split('@')[0],
-      customerEmail: user.email,
-      customerPhone: '9876543210',
+      customerName: profile.fullName || user.fullName || user.email.split('@')[0],
+      customerEmail: profile.email || user.email,
+      customerPhone: String(profile.mobile),
     }).subscribe({
       next: (order) => {
         if (order.paymentStatus === 'SUCCESS') {
@@ -144,6 +151,7 @@ export class SubscriptionPageComponent {
 
   private load(): void {
     this.viewerProfile.getCurrentProfile(true).subscribe((profile) => {
+      this.profile.set(profile);
       this.profileId.set(profile?.profileId ?? null);
       forkJoin({
         plans: this.payments.getPlans(this.role()).pipe(catchError(() => of([] as SubscriptionPlanResponse[]))),
