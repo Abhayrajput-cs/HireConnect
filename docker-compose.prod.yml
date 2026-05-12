@@ -48,7 +48,8 @@ services:
 
   eureka-service:
     build:
-      context: ./eureka-service
+      context: .
+      dockerfile: eureka-service/Dockerfile
     restart: unless-stopped
     environment:
       SERVER_PORT: 8761
@@ -65,7 +66,8 @@ services:
 
   api-gateway-service:
     build:
-      context: ./api-gateway-service
+      context: .
+      dockerfile: api-gateway-service/Dockerfile
     restart: unless-stopped
     depends_on:
       eureka-service:
@@ -81,7 +83,8 @@ services:
 
   auth-service:
     build:
-      context: ./auth-service
+      context: .
+      dockerfile: auth-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -118,7 +121,8 @@ services:
 
   profile-service:
     build:
-      context: ./profile-service
+      context: .
+      dockerfile: profile-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -148,7 +152,8 @@ services:
 
   job-service:
     build:
-      context: ./job-service
+      context: .
+      dockerfile: job-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -184,7 +189,8 @@ services:
 
   application-service:
     build:
-      context: ./application-service
+      context: .
+      dockerfile: application-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -222,7 +228,8 @@ services:
 
   interview-service:
     build:
-      context: ./interview-service
+      context: .
+      dockerfile: interview-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -259,7 +266,8 @@ services:
 
   notification-service:
     build:
-      context: ./notification-service
+      context: .
+      dockerfile: notification-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -305,7 +313,8 @@ services:
 
   payment-service:
     build:
-      context: ./payment-service
+      context: .
+      dockerfile: payment-service/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
@@ -338,7 +347,8 @@ services:
 
   hireconnect-web:
     build:
-      context: ./hireconnect-web
+      context: .
+      dockerfile: hireconnect-web/Dockerfile
     restart: unless-stopped
     depends_on:
       mysql:
