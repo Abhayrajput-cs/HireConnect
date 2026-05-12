@@ -90,7 +90,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8081
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -129,7 +129,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8084
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_profile?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_profile?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -161,7 +161,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8085
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_job?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_job?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -197,7 +197,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8086
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_application?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_application?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -235,7 +235,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8087
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_interview?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_interview?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -272,7 +272,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8088
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_notification?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_notification?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -314,7 +314,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: 8089
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_payment?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_payment?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
@@ -349,7 +349,7 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: 8090
-      DB_URL: jdbc:mysql://mysql:3306/hireconnect_web?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://${DB_HOST:-mysql}:3306/hireconnect_web?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
