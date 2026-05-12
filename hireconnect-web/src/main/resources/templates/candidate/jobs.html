@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Search Jobs</title></head>
+<body>
+<h1>Search Jobs</h1>
+<p><a href="/candidate/profile">Profile</a> | <a href="/candidate/applications">Applications</a> | <a href="/candidate/interviews">Interviews</a> | <a href="/candidate/notifications">Notifications</a></p>
+<form action="/logout" method="post"><button type="submit">Logout</button></form>
+<p>Wallet Balance: <strong th:text="${walletBalance}">0</strong></p>
+<form th:action="@{/candidate/wallet}" th:object="${walletForm}" method="post">
+    <input th:field="*{amount}" placeholder="Add money">
+    <button type="submit">Top Up Wallet</button>
+</form>
+<form th:action="@{/candidate/jobs}" method="get">
+    <input name="title" th:value="${searchTitle}" placeholder="Title">
+    <input name="location" th:value="${searchLocation}" placeholder="Location">
+    <input name="salaryMin" th:value="${salaryMin}" placeholder="Salary min">
+    <input name="salaryMax" th:value="${salaryMax}" placeholder="Salary max">
+    <button type="submit">Search</button>
+</form>
+<table border="1">
+    <thead><tr><th>Title</th><th>Location</th><th>Salary</th><th>Action</th></tr></thead>
+    <tbody>
+    <tr th:each="job : ${jobs}">
+        <td th:text="${job.title()}">Job</td>
+        <td th:text="${job.location()}">Pune</td>
+        <td th:text="${job.salaryMin()} + ' - ' + ${job.salaryMax()}"></td>
+        <td>
+            <form th:action="@{'/candidate/jobs/' + ${job.jobId()} + '/apply'}" method="post" style="display:inline">
+                <button type="submit">Apply</button>
+            </form>
+            <form th:action="@{'/candidate/jobs/' + ${job.jobId()} + '/bookmark'}" method="post" style="display:inline">
+                <button type="submit" th:text="${#lists.contains(bookmarkedJobIds, job.jobId()) ? 'Bookmarked' : 'Bookmark'}">Bookmark</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

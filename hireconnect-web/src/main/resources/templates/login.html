@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Login</title></head>
+<body>
+<h1>Login</h1>
+<p th:if="${message}" th:text="${message}"></p>
+<form th:action="@{/login}" th:object="${loginForm}" method="post">
+    <label>Email <input type="email" th:field="*{email}"></label><br>
+    <label>Password <input type="password" th:field="*{password}"></label><br>
+    <button type="submit">Login</button>
+</form>
+<p>Admin login works with the bootstrapped admin account configured in auth-service local settings.</p>
+<p><a href="/register">Create account</a></p>
+</body>
+</html>

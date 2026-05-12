@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Platform Analytics</title></head>
+<body>
+<h1>Platform Analytics</h1>
+<p>Total Jobs: <span th:text="${platformSummary.totalJobs}"></span></p>
+<p>Total Applications: <span th:text="${platformSummary.totalApplications}"></span></p>
+<p>Shortlisted: <span th:text="${platformSummary.shortlistedCount}"></span></p>
+<p>Offered: <span th:text="${platformSummary.offeredCount}"></span></p>
+<p>Rejected: <span th:text="${platformSummary.rejectedCount}"></span></p>
+<p>Avg Time To Hire: <span th:text="${platformSummary.avgTimeToHireDays}"></span></p>
+<p>View To Apply Ratio: <span th:text="${platformSummary.viewToApplyRatio}"></span></p>
+<ul><li th:each="entry : ${topCategories}" th:text="${entry.key + ': ' + entry.value}"></li></ul>
+</body>
+</html>

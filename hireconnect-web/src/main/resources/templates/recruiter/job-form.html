@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title th:text="${pageTitle}">Job Form</title></head>
+<body>
+<h1 th:text="${pageTitle}">Job Form</h1>
+<form th:action="@{${formAction}}" th:object="${jobForm}" method="post">
+    <label>Title <input th:field="*{title}"></label><br>
+    <label>Category <input th:field="*{category}"></label><br>
+    <label>Type <input th:field="*{type}"></label><br>
+    <label>Location <input th:field="*{location}"></label><br>
+    <label>Salary Min <input th:field="*{salaryMin}"></label><br>
+    <label>Salary Max <input th:field="*{salaryMax}"></label><br>
+    <label>Description <textarea th:field="*{description}"></textarea></label><br>
+    <label>Skills <input th:field="*{skills}" placeholder="Java, Spring Boot"></label><br>
+    <label>Experience Required <input th:field="*{experienceRequired}"></label><br>
+    <label>Status <input th:field="*{status}"></label><br>
+    <button type="submit">Save Job</button>
+</form>
+<p><a href="/recruiter/dashboard">Back</a></p>
+</body>
+</html>
