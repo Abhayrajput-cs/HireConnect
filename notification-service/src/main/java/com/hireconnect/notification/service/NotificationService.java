@@ -19,5 +19,7 @@ public interface NotificationService {
 
     void sendEmailAlert(String toEmail, String subject, String body);
 
+    OfferLetterAttachment buildOfferLetterForApplication(Integer applicationId);
+
     int getUnreadCount(Integer userId);
 }

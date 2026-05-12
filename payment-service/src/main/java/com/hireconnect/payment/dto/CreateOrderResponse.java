@@ -13,6 +13,10 @@ public record CreateOrderResponse(
     PlanType planType,
     BigDecimal amount,
     String currency,
-    PaymentStatus paymentStatus
+    PaymentStatus paymentStatus,
+    Long userId,
+    String customerName,
+    String customerEmail,
+    String customerPhone
 ) {
 }

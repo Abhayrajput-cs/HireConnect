@@ -1,0 +1,380 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hireconnect
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then redis-server --requirepass "$$REDIS_PASSWORD"; else redis-server; fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG; else redis-cli ping | grep PONG; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hireconnect
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hireconnect
+
+  eureka-service:
+    build:
+      context: ./eureka-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8761
+      EUREKA_HOSTNAME: eureka-service
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health | grep UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+    networks:
+      - hireconnect
+
+  api-gateway-service:
+    build:
+      context: ./api-gateway-service
+    restart: unless-stopped
+    depends_on:
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS}
+    ports:
+      - "8080:8080"
+    networks:
+      - hireconnect
+
+  auth-service:
+    build:
+      context: ./auth-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8081
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      OAUTH2_DEFAULT_SUCCESS_URL: ${OAUTH2_DEFAULT_SUCCESS_URL}
+      ADMIN_BOOTSTRAP_ENABLED: ${ADMIN_BOOTSTRAP_ENABLED}
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD}
+      MAIL_ENABLED: ${MAIL_ENABLED}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS}
+      EMAIL_VERIFICATION_ENABLED: ${EMAIL_VERIFICATION_ENABLED}
+      EMAIL_VERIFICATION_OTP_TTL_MINUTES: ${EMAIL_VERIFICATION_OTP_TTL_MINUTES}
+    ports:
+      - "8081:8081"
+    networks:
+      - hireconnect
+
+  profile-service:
+    build:
+      context: ./profile-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8084
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_profile?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      CACHE_TYPE: ${CACHE_TYPE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HEALTH_ENABLED: ${REDIS_HEALTH_ENABLED}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+    volumes:
+      - profile-uploads:/app/uploads
+    networks:
+      - hireconnect
+
+  job-service:
+    build:
+      context: ./job-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8085
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_job?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      PROFILE_SERVICE_BASE_URL: http://profile-service:8084
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8089
+      CACHE_TYPE: ${CACHE_TYPE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HEALTH_ENABLED: ${REDIS_HEALTH_ENABLED}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MESSAGING_ENABLED: ${MESSAGING_ENABLED}
+    networks:
+      - hireconnect
+
+  application-service:
+    build:
+      context: ./application-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8086
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_application?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      PROFILE_SERVICE_BASE_URL: http://profile-service:8084
+      JOB_SERVICE_BASE_URL: http://job-service:8085
+      INTERVIEW_SERVICE_BASE_URL: http://interview-service:8087
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8089
+      CACHE_TYPE: ${CACHE_TYPE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HEALTH_ENABLED: ${REDIS_HEALTH_ENABLED}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MESSAGING_ENABLED: ${MESSAGING_ENABLED}
+    networks:
+      - hireconnect
+
+  interview-service:
+    build:
+      context: ./interview-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8087
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_interview?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      PROFILE_SERVICE_BASE_URL: http://profile-service:8084
+      JOB_SERVICE_BASE_URL: http://job-service:8085
+      APPLICATION_SERVICE_BASE_URL: http://application-service:8086
+      CACHE_TYPE: ${CACHE_TYPE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HEALTH_ENABLED: ${REDIS_HEALTH_ENABLED}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MESSAGING_ENABLED: ${MESSAGING_ENABLED}
+    networks:
+      - hireconnect
+
+  notification-service:
+    build:
+      context: ./notification-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8088
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_notification?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      PROFILE_SERVICE_BASE_URL: http://profile-service:8084
+      JOB_SERVICE_BASE_URL: http://job-service:8085
+      APPLICATION_SERVICE_BASE_URL: http://application-service:8086
+      INTERVIEW_SERVICE_BASE_URL: http://interview-service:8087
+      CACHE_TYPE: ${CACHE_TYPE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_HEALTH_ENABLED: ${REDIS_HEALTH_ENABLED}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      MESSAGING_ENABLED: ${MESSAGING_ENABLED}
+      MAIL_ENABLED: ${MAIL_ENABLED}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS}
+    networks:
+      - hireconnect
+
+  payment-service:
+    build:
+      context: ./payment-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8089
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_payment?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_BASE_URL: http://auth-service:8081
+      RAZORPAY_BASE_URL: ${RAZORPAY_BASE_URL}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_MOCK_MODE: ${RAZORPAY_MOCK_MODE}
+      MAIL_ENABLED: ${MAIL_ENABLED}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS}
+      MAIL_SMTP_STARTTLS_REQUIRED: ${MAIL_SMTP_STARTTLS_REQUIRED}
+    networks:
+      - hireconnect
+
+  hireconnect-web:
+    build:
+      context: ./hireconnect-web
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-service:
+        condition: service_healthy
+      api-gateway-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8090
+      DB_URL: jdbc:mysql://mysql:3306/hireconnect_web?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EUREKA_SERVER_URL: http://eureka-service:8761/eureka/
+      GATEWAY_BASE_URL: http://api-gateway-service:8080
+    networks:
+      - hireconnect
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api-gateway-service
+      - auth-service
+    ports:
+      - "80:80"
+    networks:
+      - hireconnect
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  profile-uploads:
+
+networks:
+  hireconnect:
+    driver: bridge

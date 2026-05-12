@@ -246,7 +246,11 @@ public class PaymentServiceImpl implements PaymentService {
             transaction.getPlanType(),
             transaction.getAmount(),
             transaction.getCurrency(),
-            transaction.getPaymentStatus()
+            transaction.getPaymentStatus(),
+            transaction.getUserId(),
+            transaction.getCustomerName(),
+            transaction.getCustomerEmail(),
+            transaction.getCustomerPhone()
         );
     }
 

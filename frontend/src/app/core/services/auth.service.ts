@@ -169,7 +169,7 @@ export class AuthService {
   buildGithubLoginUrl(role: Exclude<UserRole, 'ADMIN'>): string {
     const query = new URLSearchParams({
       role,
-      redirect_uri: environment.oauthCallbackUrl,
+      redirect_uri: this.oauthCallbackUrl(),
     });
     return `${API_ENDPOINTS.githubOAuthStart}?${query.toString()}`;
   }
@@ -184,5 +184,9 @@ export class AuthService {
       refreshToken: response.refreshToken,
       user: response.user,
     });
+  }
+
+  private oauthCallbackUrl(): string {
+    return environment.oauthCallbackUrl || `${window.location.origin}/oauth2/callback`;
   }
 }

@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -29,10 +30,16 @@ public class PaymentReceiptMailService {
 
     private final JavaMailSender mailSender;
     private final MailProperties mailProperties;
+    private final PaymentReceiptPdfService receiptPdfService;
 
-    public PaymentReceiptMailService(JavaMailSender mailSender, MailProperties mailProperties) {
+    public PaymentReceiptMailService(
+        JavaMailSender mailSender,
+        MailProperties mailProperties,
+        PaymentReceiptPdfService receiptPdfService
+    ) {
         this.mailSender = mailSender;
         this.mailProperties = mailProperties;
+        this.receiptPdfService = receiptPdfService;
     }
 
     public void sendSubscriptionReceipt(PaymentTransaction transaction, SubscriptionPlan plan) {
@@ -47,6 +54,14 @@ public class PaymentReceiptMailService {
             helper.setFrom(resolveFromAddress());
             helper.setSubject("HireConnect subscription receipt - " + plan.getDisplayName());
             helper.setText(buildPlainText(transaction, plan), buildHtml(transaction, plan));
+            PaymentReceiptAttachment receipt = receiptPdfService.build(transaction, plan);
+            if (receipt.content() != null && receipt.content().length > 0) {
+                helper.addAttachment(
+                    receipt.filename(),
+                    new ByteArrayResource(receipt.content()),
+                    "application/pdf"
+                );
+            }
             mailSender.send(message);
         } catch (MessagingException | RuntimeException ex) {
             log.warn("Failed to send subscription receipt for order {}", transaction.getOrderId(), ex);

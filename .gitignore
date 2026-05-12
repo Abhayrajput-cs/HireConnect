@@ -5,6 +5,8 @@
 .settings/
 **/.settings/
 **/.secrets/
+.env.prod
+*.env.prod
 *.log
 **/target/
 node_modules/

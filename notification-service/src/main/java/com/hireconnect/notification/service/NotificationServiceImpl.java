@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -23,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.hireconnect.notification.client.ApplicationServiceClient;
+import com.hireconnect.notification.client.ApplicationSnapshot;
 import com.hireconnect.notification.client.JobServiceClient;
 import com.hireconnect.notification.client.JobSnapshot;
 import com.hireconnect.notification.client.ProfileServiceClient;
@@ -46,6 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final ApplicationMetricRepository applicationMetricRepository;
+    private final ApplicationServiceClient applicationServiceClient;
     private final ProfileServiceClient profileServiceClient;
     private final JobServiceClient jobServiceClient;
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
@@ -55,6 +59,7 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationServiceImpl(
         NotificationRepository notificationRepository,
         ApplicationMetricRepository applicationMetricRepository,
+        ApplicationServiceClient applicationServiceClient,
         ProfileServiceClient profileServiceClient,
         JobServiceClient jobServiceClient,
         ObjectProvider<JavaMailSender> mailSenderProvider,
@@ -63,6 +68,7 @@ public class NotificationServiceImpl implements NotificationService {
     ) {
         this.notificationRepository = notificationRepository;
         this.applicationMetricRepository = applicationMetricRepository;
+        this.applicationServiceClient = applicationServiceClient;
         this.profileServiceClient = profileServiceClient;
         this.jobServiceClient = jobServiceClient;
         this.mailSenderProvider = mailSenderProvider;
@@ -95,6 +101,11 @@ public class NotificationServiceImpl implements NotificationService {
 
         if (mailProperties.enabled() && StringUtils.hasText(event.getEmailSubject())) {
             OfferLetterAttachment offerLetter = buildOfferLetterIfNeeded(event);
+            if (isOfferEvent(event) && offerLetter == null) {
+                LOGGER.warn("Offer email for application {} was skipped because the PDF attachment could not be generated", event.getApplicationId());
+                updateApplicationMetrics(event, occurredAt);
+                return;
+            }
             for (String email : recipients.emails()) {
                 if (!StringUtils.hasText(email)) {
                     continue;
@@ -156,6 +167,30 @@ public class NotificationServiceImpl implements NotificationService {
         sendEmailAlert(toEmail, subject, body, null);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public OfferLetterAttachment buildOfferLetterForApplication(Integer applicationId) {
+        ApplicationSnapshot application = applicationServiceClient.getApplication(applicationId);
+        if (application == null || application.applicationId() == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Application not found with id: " + applicationId);
+        }
+
+        String status = normalizeValue(application.status(), "");
+        if (!"OFFERED".equals(status) && !"OFFER_ACCEPTED".equals(status)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Offer letter is available only for offered applications");
+        }
+
+        ProfileSnapshot candidate = profileServiceClient.getProfileById(application.candidateId());
+        JobSnapshot job = jobServiceClient.getJob(application.jobId());
+        if (candidate == null || candidate.profileId() == null || job == null || job.jobId() == null) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "Offer letter details are unavailable right now");
+        }
+        enforceOfferLetterAccess(application, job);
+
+        ProfileSnapshot recruiter = profileServiceClient.getProfileById(job.postedBy());
+        return offerLetterPdfService.build(candidate, recruiter, job);
+    }
+
     private void sendEmailAlert(String toEmail, String subject, String body, OfferLetterAttachment attachment) {
         if (!mailProperties.enabled()) {
             return;
@@ -172,7 +207,7 @@ public class NotificationServiceImpl implements NotificationService {
             helper.setFrom(mailProperties.from());
             helper.setTo(toEmail);
             helper.setSubject(subject);
-            helper.setText(buildPlainTextEmail(body), buildHtmlEmail(subject, body));
+            helper.setText(buildPlainTextEmail(body, attachment), buildHtmlEmail(subject, body, attachment));
             if (attachment != null && attachment.content() != null && attachment.content().length > 0) {
                 helper.addAttachment(
                     attachment.filename(),
@@ -187,9 +222,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private OfferLetterAttachment buildOfferLetterIfNeeded(NotificationEvent event) {
-        String eventType = normalizeValue(event.getEventType(), "");
-        String status = normalizeValue(event.getStatus(), "");
-        if (!"APPLICATION_OFFERED".equals(eventType) && !"OFFERED".equals(status)) {
+        if (!isOfferEvent(event)) {
             return null;
         }
         if (event.getCandidateId() == null || event.getRecruiterId() == null || event.getJobId() == null) {
@@ -211,19 +244,32 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private String buildPlainTextEmail(String body) {
+    private boolean isOfferEvent(NotificationEvent event) {
+        String eventType = normalizeValue(event.getEventType(), "");
+        String status = normalizeValue(event.getStatus(), "");
+        return "APPLICATION_OFFERED".equals(eventType) || "OFFERED".equals(status);
+    }
+
+    private String buildPlainTextEmail(String body, OfferLetterAttachment attachment) {
+        String attachmentNote = attachment == null ? "" : "\nYour offer letter PDF is attached to this email.\n";
         return """
             HireConnect
 
             %s
+            %s
 
             Open your HireConnect workspace for full details.
-            """.formatted(body == null ? "" : body);
+            """.formatted(body == null ? "" : body, attachmentNote);
     }
 
-    private String buildHtmlEmail(String subject, String body) {
+    private String buildHtmlEmail(String subject, String body, OfferLetterAttachment attachment) {
         String safeSubject = escapeHtml(subject == null ? "HireConnect update" : subject);
         String safeBody = escapeHtml(body == null ? "" : body).replace("\n", "<br>");
+        String attachmentNote = attachment == null ? "" : """
+                            <div style="margin:0 0 24px;padding:14px 16px;border-radius:12px;background:#eef8ff;border:1px solid #bfe7ff;color:#075985;font-weight:700;">
+                              Your offer letter PDF is attached to this email.
+                            </div>
+            """;
         return """
             <!doctype html>
             <html>
@@ -241,6 +287,7 @@ public class NotificationServiceImpl implements NotificationService {
                         <tr>
                           <td style="padding:30px;">
                             <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#24364b;">%s</p>
+                            %s
                             <a href="http://localhost:4200" style="display:inline-block;background:#0f8cff;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 18px;border-radius:10px;">Open HireConnect</a>
                           </td>
                         </tr>
@@ -255,7 +302,7 @@ public class NotificationServiceImpl implements NotificationService {
                 </table>
               </body>
             </html>
-            """.formatted(safeSubject, safeBody);
+            """.formatted(safeSubject, safeBody, attachmentNote);
     }
 
     private String escapeHtml(String value) {
@@ -352,6 +399,22 @@ public class NotificationServiceImpl implements NotificationService {
         if (!userId.equals(currentProfile.profileId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Users can only manage their own notifications");
         }
+    }
+
+    private void enforceOfferLetterAccess(ApplicationSnapshot application, JobSnapshot job) {
+        String role = currentRole();
+        if ("ADMIN".equals(role)) {
+            return;
+        }
+
+        ProfileSnapshot currentProfile = profileServiceClient.getProfileByEmailForAuthUser(currentEmail());
+        if ("CANDIDATE".equals(role) && Objects.equals(application.candidateId(), currentProfile.profileId())) {
+            return;
+        }
+        if ("RECRUITER".equals(role) && Objects.equals(job.postedBy(), currentProfile.profileId())) {
+            return;
+        }
+        throw new ApiException(HttpStatus.FORBIDDEN, "Users can only download offer letters for their own applications");
     }
 
     private String currentEmail() {
