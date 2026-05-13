@@ -7,6 +7,8 @@ COPY . .
 RUN npm run build -- --configuration production
 
 FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV API_GATEWAY_UPSTREAM=api-gateway-service:8080
+ENV AUTH_SERVICE_UPSTREAM=auth-service:8081
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /workspace/dist/frontend/browser /usr/share/nginx/html
 EXPOSE 80
