@@ -55,6 +55,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final MailProperties mailProperties;
     private final OfferLetterPdfService offerLetterPdfService;
+    private final HttpMailService httpMailService;
 
     public NotificationServiceImpl(
         NotificationRepository notificationRepository,
@@ -64,7 +65,8 @@ public class NotificationServiceImpl implements NotificationService {
         JobServiceClient jobServiceClient,
         ObjectProvider<JavaMailSender> mailSenderProvider,
         MailProperties mailProperties,
-        OfferLetterPdfService offerLetterPdfService
+        OfferLetterPdfService offerLetterPdfService,
+        HttpMailService httpMailService
     ) {
         this.notificationRepository = notificationRepository;
         this.applicationMetricRepository = applicationMetricRepository;
@@ -74,6 +76,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.mailSenderProvider = mailSenderProvider;
         this.mailProperties = mailProperties;
         this.offerLetterPdfService = offerLetterPdfService;
+        this.httpMailService = httpMailService;
     }
 
     @Override
@@ -193,6 +196,24 @@ public class NotificationServiceImpl implements NotificationService {
 
     private void sendEmailAlert(String toEmail, String subject, String body, OfferLetterAttachment attachment) {
         if (!mailProperties.enabled()) {
+            return;
+        }
+        if (httpMailService.enabled()) {
+            if (!httpMailService.configured()) {
+                LOGGER.warn("Email API is not configured; email notification to {} was skipped", toEmail);
+                return;
+            }
+            try {
+                httpMailService.send(
+                    toEmail,
+                    subject,
+                    buildPlainTextEmail(body, attachment),
+                    buildHtmlEmail(subject, body, attachment),
+                    attachment
+                );
+            } catch (Exception ex) {
+                LOGGER.warn("Failed to send email notification to {} through email API: {}", toEmail, ex.getMessage());
+            }
             return;
         }
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();

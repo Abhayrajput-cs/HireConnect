@@ -31,15 +31,18 @@ public class PaymentReceiptMailService {
     private final JavaMailSender mailSender;
     private final MailProperties mailProperties;
     private final PaymentReceiptPdfService receiptPdfService;
+    private final HttpMailService httpMailService;
 
     public PaymentReceiptMailService(
         JavaMailSender mailSender,
         MailProperties mailProperties,
-        PaymentReceiptPdfService receiptPdfService
+        PaymentReceiptPdfService receiptPdfService,
+        HttpMailService httpMailService
     ) {
         this.mailSender = mailSender;
         this.mailProperties = mailProperties;
         this.receiptPdfService = receiptPdfService;
+        this.httpMailService = httpMailService;
     }
 
     public void sendSubscriptionReceipt(PaymentTransaction transaction, SubscriptionPlan plan) {
@@ -48,13 +51,28 @@ public class PaymentReceiptMailService {
         }
 
         try {
+            PaymentReceiptAttachment receipt = receiptPdfService.build(transaction, plan);
+            if (httpMailService.enabled()) {
+                if (!httpMailService.configured()) {
+                    log.warn("Email API is not configured; subscription receipt for order {} was skipped", transaction.getOrderId());
+                    return;
+                }
+                httpMailService.send(
+                    transaction.getCustomerEmail(),
+                    "HireConnect subscription receipt - " + plan.getDisplayName(),
+                    buildPlainText(transaction, plan),
+                    buildHtml(transaction, plan),
+                    receipt
+                );
+                return;
+            }
+
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setTo(transaction.getCustomerEmail());
             helper.setFrom(resolveFromAddress());
             helper.setSubject("HireConnect subscription receipt - " + plan.getDisplayName());
             helper.setText(buildPlainText(transaction, plan), buildHtml(transaction, plan));
-            PaymentReceiptAttachment receipt = receiptPdfService.build(transaction, plan);
             if (receipt.content() != null && receipt.content().length > 0) {
                 helper.addAttachment(
                     receipt.filename(),

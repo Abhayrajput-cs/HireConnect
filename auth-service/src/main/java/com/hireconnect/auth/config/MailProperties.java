@@ -7,6 +7,10 @@ public record MailProperties(
     boolean enabled,
     String from,
     String username,
-    String password
+    String password,
+    String provider,
+    String apiUrl,
+    String apiKey,
+    String replyTo
 ) {
 }

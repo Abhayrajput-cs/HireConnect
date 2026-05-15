@@ -26,15 +26,18 @@ public class EmailVerificationService {
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final MailProperties mailProperties;
     private final AuthVerificationProperties verificationProperties;
+    private final HttpMailService httpMailService;
 
     public EmailVerificationService(
         ObjectProvider<JavaMailSender> mailSenderProvider,
         MailProperties mailProperties,
-        AuthVerificationProperties verificationProperties
+        AuthVerificationProperties verificationProperties,
+        HttpMailService httpMailService
     ) {
         this.mailSenderProvider = mailSenderProvider;
         this.mailProperties = mailProperties;
         this.verificationProperties = verificationProperties;
+        this.httpMailService = httpMailService;
     }
 
     public void prepareVerification(UserCredential user) {
@@ -56,28 +59,18 @@ public class EmailVerificationService {
         if (!mailProperties.enabled()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Email verification is enabled, but SMTP mail sending is disabled.");
         }
-        assertSmtpConfigured();
+        String text = """
+            Welcome to HireConnect.
 
-        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-        if (mailSender == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Email service is unavailable. Please try again in a moment.");
-        }
+            Your verification code is: %s
 
+            This code expires in %d minutes.
+            """.formatted(user.getEmailVerificationCode(), verificationProperties.otpTtlMinutes());
         try {
-            mailSender.send(buildMessage(
-                user.getEmail(),
-                "Verify your HireConnect email",
-                """
-                    Welcome to HireConnect.
-
-                    Your verification code is: %s
-
-                    This code expires in %d minutes.
-                    """.formatted(user.getEmailVerificationCode(), verificationProperties.otpTtlMinutes())
-            ));
+            sendMail(user.getEmail(), "Verify your HireConnect email", text);
         } catch (Exception ex) {
             LOGGER.warn("Failed to send verification email to {}", user.getEmail(), ex);
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "We could not send the verification email. Please check SMTP settings and try again.");
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "We could not send the verification email. Please check mail settings and try again.");
         }
     }
 
@@ -90,29 +83,34 @@ public class EmailVerificationService {
         if (!mailProperties.enabled()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Password reset email cannot be sent because SMTP mail sending is disabled.");
         }
-        assertSmtpConfigured();
+        String text = """
+            We received a request to reset your HireConnect password.
 
+            Your reset code is: %s
+
+            This code expires in %d minutes. If you did not request this, ignore this email.
+            """.formatted(user.getPasswordResetCode(), verificationProperties.otpTtlMinutes());
+        try {
+            sendMail(user.getEmail(), "Reset your HireConnect password", text);
+        } catch (Exception ex) {
+            LOGGER.warn("Failed to send password reset email to {}", user.getEmail(), ex);
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "We could not send the password reset email. Please check mail settings and try again.");
+        }
+    }
+
+    private void sendMail(String to, String subject, String text) {
+        if (httpMailService.enabled()) {
+            httpMailService.assertConfigured();
+            httpMailService.send(to, subject, text);
+            return;
+        }
+
+        assertSmtpConfigured();
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         if (mailSender == null) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Email service is unavailable. Please try again in a moment.");
         }
-
-        try {
-            mailSender.send(buildMessage(
-                user.getEmail(),
-                "Reset your HireConnect password",
-                """
-                    We received a request to reset your HireConnect password.
-
-                    Your reset code is: %s
-
-                    This code expires in %d minutes. If you did not request this, ignore this email.
-                    """.formatted(user.getPasswordResetCode(), verificationProperties.otpTtlMinutes())
-            ));
-        } catch (Exception ex) {
-            LOGGER.warn("Failed to send password reset email to {}", user.getEmail(), ex);
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "We could not send the password reset email. Please check SMTP settings and try again.");
-        }
+        mailSender.send(buildMessage(to, subject, text));
     }
 
     private SimpleMailMessage buildMessage(String to, String subject, String text) {
