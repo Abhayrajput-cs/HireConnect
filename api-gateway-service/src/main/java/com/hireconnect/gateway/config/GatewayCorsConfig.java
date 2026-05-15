@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -11,14 +13,19 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @Configuration
 public class GatewayCorsConfig {
 
+    private static final String DEFAULT_ALLOWED_ORIGINS = "http://localhost:4200,http://127.0.0.1:4200";
+
+    private final Environment environment;
+
+    public GatewayCorsConfig(Environment environment) {
+        this.environment = environment;
+    }
+
     @Bean
     CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of(
-            "http://localhost:4200",
-            "http://127.0.0.1:4200"
-        ));
+        config.setAllowedOriginPatterns(allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.addAllowedHeader(CorsConfiguration.ALL);
         config.addExposedHeader(CorsConfiguration.ALL);
@@ -26,5 +33,13 @@ public class GatewayCorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return new CorsWebFilter(source);
+    }
+
+    private List<String> allowedOrigins() {
+        String configuredOrigins = environment.getProperty("FRONTEND_ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGINS);
+        return StringUtils.commaDelimitedListToSet(configuredOrigins).stream()
+            .map(String::trim)
+            .filter(StringUtils::hasText)
+            .toList();
     }
 }
