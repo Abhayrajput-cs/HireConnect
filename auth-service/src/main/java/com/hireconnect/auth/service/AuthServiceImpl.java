@@ -99,11 +99,6 @@ public class AuthServiceImpl implements AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         if (!user.isEmailVerified()) {
-            if (!StringUtils.hasText(user.getEmailVerificationCode()) && user.getEmailVerificationExpiresAt() == null) {
-                user.setEmailVerified(true);
-                authRepository.save(user);
-                return issueTokens(user);
-            }
             throw new ApiException(HttpStatus.FORBIDDEN, "Please verify your email before signing in");
         }
 
@@ -116,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
         UserCredential user = authRepository.findByEmail(normalizeEmail(request.email()))
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Account not found for this email"));
         if (user.isEmailVerified()) {
-            return issueTokens(user);
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Email is already verified. Please sign in.");
         }
         if (!StringUtils.hasText(user.getEmailVerificationCode())
             || user.getEmailVerificationExpiresAt() == null
